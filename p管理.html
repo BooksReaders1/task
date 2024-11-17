@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .task-table th, .task-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .task-table th {
+            background-color: #f4f4f4;
+        }
+
+        .task-table .completed {
+            background-color: #d4edda; /* 绿色背景色 */
+        }
+
+        .task-table .incomplete {
+            background-color: #f8d7da; /* 红色背景色 */
+        }
+
+        .edit-button, .save-button, .cancel-button {
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .edit-button {
+            background-color: #f0ad4e;
+            color: white;
+        }
+
+        .save-button {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .cancel-button {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>任务管理</h1>
+    
+    <!-- 新任务输入框 -->
+    <div>
+        <input type="text" id="task-text" placeholder="输入任务" />
+        <input type="text" id="task-remark" placeholder="输入备注" />
+        <button onclick="saveTask()">保存任务</button>
+    </div>
+
+    <!-- 筛选部分 -->
+    <div class="filter-section">
+        <div class="filter-title">条件筛选</div>
+        <input type="text" id="search" placeholder="搜索任务..." oninput="searchTasks()" />
+        <select id="status-filter" onchange="filterTasks()">
+            <option value="">全部任务</option>
+            <option value="未使用">未完成</option>
+            <option value="已完成">已完成</option>
+        </select>
+    </div>
+
+    <h2>任务列表</h2>
+    <table class="task-table" id="task-list">
+        <thead>
+            <tr>
+                <th>任务文本</th>
+                <th>备注</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 动态任务列表 -->
+        </tbody>
+    </table>
+
+    <script>
+        let db;
+        const dbName = "taskDB";  // 数据库名称
+        const storeName = "tasks"; // 存储任务的对象存储空间名称
+        let currentEditingTaskId = null; // 当前正在编辑的任务 ID
+
+        // 打开 IndexedDB 数据库
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = function(event) {
+            console.error("数据库打开失败", event);
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            console.log("数据库打开成功");
+            loadTasksFromIndexedDB();  // 加载任务列表
+        };
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            const objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true }); // 设置自增主键
+            objectStore.createIndex("status", "status", { unique: false });
+            objectStore.createIndex("createdAt", "createdAt", { unique: false }); // 创建创建时间索引
+            console.log("对象存储空间创建成功");
+        };
+
+      // 添加任务到 IndexedDB
+function addTaskToIndexedDB(task) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.add(task);
+
+    request.onsuccess = function(event) {
+        console.log("任务添加成功");
+        loadTasksFromIndexedDB(); // 更新任务列表
+    };
+
+    request.onerror = function(event) {
+        console.log("任务添加失败", event);
+    };
+}
+
+        // 获取任务列表并展示
+        function loadTasksFromIndexedDB() {
+            const transaction = db.transaction([storeName], "readonly");
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();  // 获取所有任务
+
+            request.onsuccess = function(event) {
+                const tasks = event.target.result;
+                tasks.sort((a, b) => b.createdAt - a.createdAt); // 按时间倒序排序
+                displayTasks(tasks);  // 展示任务
+            };
+
+            request.onerror = function(event) {
+                console.log("读取任务失败", event);
+            };
+        }
+
+        // 展示任务列表
+function displayTasks(tasks) {
+    const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
+    taskList.innerHTML = ""; // 清空列表
+
+    const filter = document.getElementById("status-filter").value;
+    const searchTerm = document.getElementById("search").value.toLowerCase();
+
+    const filteredTasks = tasks.filter(task => {
+        const matchesStatus = filter ? task.status === filter : true;
+        const matchesSearch = task.text.toLowerCase().includes(searchTerm) || task.remark.toLowerCase().includes(searchTerm);
+        return matchesStatus && matchesSearch;
+    });
+
+    filteredTasks.forEach(task => {
+        const taskRow = document.createElement("tr");
+        taskRow.classList.add(task.status === "已完成" ? "completed" : "incomplete");
+
+        taskRow.innerHTML = `
+            <td><input type="text" class="task-text" value="${task.text}" disabled /></td>
+            <td><input type="text" class="task-remark" value="${task.remark}" disabled /></td>
+            <td><span>${task.status}</span></td>
+            <td>
+                <button class="edit-button" onclick="editTask(${task.id})">编辑</button>
+                <button class="save-button" style="display: none;" onclick="saveTaskEdit(${task.id})">保存</button>
+                <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
+                <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
+                <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
+            </td>
+        `;
+        taskList.appendChild(taskRow);
+    });
+}
+// 完成任务
+function completeTask(taskId) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(taskId);
+
+    request.onsuccess = function(event) {
+        const task = event.target.result;
+        task.status = "已完成";
+
+        const updateRequest = store.put(task);
+        updateRequest.onsuccess = function() {
+            console.log("任务状态更新成功");
+            loadTasksFromIndexedDB();
+        };
+    };
+}
+
+// 删除任务
+function deleteTask(taskId) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(taskId);
+
+    request.onsuccess = function() {
+        console.log("任务删除成功");
+        loadTasksFromIndexedDB(); // 更新任务列表
+    };
+}
+
+     // 保存新任务
+function saveTask() {
+    const text = document.getElementById("task-text").value;
+    const remark = document.getElementById("task-remark").value;
+
+    if (text.trim() === "") {
+        alert("任务文本不能为空！");
+        return;
+    }
+
+    const task = {
+        text: text,
+        remark: remark,
+        status: "未使用", // 默认状态为未使用
+        createdAt: Date.now() // 记录创建时间
+    };
+
+    addTaskToIndexedDB(task);
+}
+
+
+     // 编辑任务
+function editTask(taskId) {
+    const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
+    
+    for (let row of taskRows) {
+        const editButton = row.querySelector(".edit-button");
+        
+        // 如果是当前编辑的任务行
+        if (editButton && editButton.getAttribute("onclick").includes(taskId)) {
+            const textInput = row.querySelector(".task-text");
+            const remarkInput = row.querySelector(".task-remark");
+
+            // 启用输入框
+            textInput.disabled = false;
+            remarkInput.disabled = false;
+
+            // 显示保存和取消按钮
+            row.querySelector(".save-button").style.display = "inline-block";
+            row.querySelector(".cancel-button").style.display = "inline-block";
+
+            // 隐藏编辑按钮
+            editButton.style.display = "none";
+
+            // 隐藏删除和完成按钮
+            row.querySelector(".delete-button").style.display = "none";
+            row.querySelector(".complete-button").style.display = "none";
+
+            currentEditingTaskId = taskId;
+        }
+    }
+}
+
+// 保存编辑的任务
+function saveTaskEdit(taskId) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(taskId);
+
+    request.onsuccess = function(event) {
+        const task = event.target.result;
+        const row = Array.from(document.querySelectorAll("#task-list tbody tr")).find(row => {
+            const editButton = row.querySelector(".edit-button");
+            return editButton && editButton.getAttribute("onclick").includes(taskId);
+        });
+
+        if (row) {
+            const textInput = row.querySelector(".task-text");
+            const remarkInput = row.querySelector(".task-remark");
+
+            task.text = textInput.value;
+            task.remark = remarkInput.value;
+
+            const updateRequest = store.put(task);
+            updateRequest.onsuccess = function() {
+                console.log("任务编辑成功");
+
+                // 保存编辑后，重新加载任务列表
+                currentEditingTaskId = null;
+                loadTasksFromIndexedDB();
+            };
+        }
+    };
+
+    request.onerror = function(event) {
+        console.error("编辑保存任务失败", event);
+    };
+}
+
+// 取消编辑
+function cancelEdit(taskId) {
+    currentEditingTaskId = null;
+    loadTasksFromIndexedDB(); // 恢复原来的任务列表
+}
+
+// 筛选任务
+function filterTasks() {
+    loadTasksFromIndexedDB(); // 重新加载任务列表，应用筛选条件
+}
+
+// 搜索任务
+function searchTasks() {
+    loadTasksFromIndexedDB(); // 重新加载任务列表，应用搜索条件
+}
+    </script>
+
+</body>
+</html>
