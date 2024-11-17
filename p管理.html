@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -129,6 +129,15 @@
             console.log("对象存储空间创建成功");
         };
 
+
+    function executeQuery(taskText) {
+console.log(taskText);
+        // 仅保留数字并传递到查询页面
+        const pid = taskText.replace(/\D/g, ''); 
+console.log(pid);
+        window.open(`https://booksreaders1.github.io/?pid=${pid}`, '_blank');
+    }
+
       // 添加任务到 IndexedDB
 function addTaskToIndexedDB(task) {
     const transaction = db.transaction([storeName], "readwrite");
@@ -177,6 +186,7 @@ function displayTasks(tasks) {
     });
 
     filteredTasks.forEach(task => {
+console.log('task',task)
         const taskRow = document.createElement("tr");
         taskRow.classList.add(task.status === "已完成" ? "completed" : "incomplete");
 
@@ -190,6 +200,7 @@ function displayTasks(tasks) {
                 <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
                 <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
                 <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
+                <button class="complete-button" onclick="executeQuery('${task.text.replace(/\D/g, '')}')">执行查询</button>
             </td>
         `;
         taskList.appendChild(taskRow);
