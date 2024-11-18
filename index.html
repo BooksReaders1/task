@@ -85,6 +85,7 @@
             <option value="未使用">未完成</option>
             <option value="已完成">已完成</option>
         </select>
+        <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
     </div>
 
     <h2>任务列表</h2>
@@ -129,30 +130,38 @@
             console.log("对象存储空间创建成功");
         };
 
-
-    function executeQuery(taskText) {
-console.log(taskText);
-        // 仅保留数字并传递到查询页面
-        const pid = taskText.replace(/\D/g, ''); 
-console.log(pid);
-        window.open(`https://booksreaders1.github.io/?pid=${pid}`, '_blank');
+window.onload = function () {
+  const urlParams = new URLSearchParams(window.location.search);  // 获取 URL 参数
+    const pid = urlParams.get('pid');  // 获取传递的 pid 参数
+    
+    if (pid) {
+        // 假设任务管理页面有一个查询框，使用它填充 pid 参数
+        const inputField = document.getElementById('search');  // 获取搜索框
+        if (inputField) {
+            inputField.value = pid;  // 设置输入框的值为 pid 参数
+        }
+        console.log('Pid from URL:', pid);
+        // 可选：立即调用任务筛选函数，依据 pid 查询任务
+        searchTasks();
     }
+};
 
-      // 添加任务到 IndexedDB
-function addTaskToIndexedDB(task) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.add(task);
+        // 添加任务到 IndexedDB
+        function addTaskToIndexedDB(task) {
+            const transaction = db.transaction([storeName], "readwrite");
+            const store = transaction.objectStore(storeName);
+            const request = store.add(task);
 
-    request.onsuccess = function(event) {
-        console.log("任务添加成功");
-        loadTasksFromIndexedDB(); // 更新任务列表
-    };
+            request.onsuccess = function(event) {
+                console.log("任务添加成功");
+                loadTasksFromIndexedDB(); // 更新任务列表
+                clearTaskInputs(); // 清空任务输入框
+            };
 
-    request.onerror = function(event) {
-        console.log("任务添加失败", event);
-    };
-}
+            request.onerror = function(event) {
+                console.log("任务添加失败", event);
+            };
+        }
 
         // 获取任务列表并展示
         function loadTasksFromIndexedDB() {
@@ -172,175 +181,166 @@ function addTaskToIndexedDB(task) {
         }
 
         // 展示任务列表
-function displayTasks(tasks) {
-    const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
-    taskList.innerHTML = ""; // 清空列表
+        function displayTasks(tasks) {
+            const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
+            taskList.innerHTML = ""; // 清空列表
 
-    const filter = document.getElementById("status-filter").value;
-    const searchTerm = document.getElementById("search").value.toLowerCase();
+            const filter = document.getElementById("status-filter").value;
+            const searchTerm = document.getElementById("search").value.toLowerCase();
 
-    const filteredTasks = tasks.filter(task => {
-        const matchesStatus = filter ? task.status === filter : true;
-        const matchesSearch = task.text.toLowerCase().includes(searchTerm) || task.remark.toLowerCase().includes(searchTerm);
-        return matchesStatus && matchesSearch;
-    });
+            const filteredTasks = tasks.filter(task => {
+                const matchesStatus = filter ? task.status === filter : true;
+                const matchesSearch = task.text.toLowerCase().includes(searchTerm) || task.remark.toLowerCase().includes(searchTerm);
+                return matchesStatus && matchesSearch;
+            });
 
-    filteredTasks.forEach(task => {
-console.log('task',task)
-        const taskRow = document.createElement("tr");
-        taskRow.classList.add(task.status === "已完成" ? "completed" : "incomplete");
+            filteredTasks.forEach(task => {
+                const taskRow = document.createElement("tr");
+                taskRow.classList.add(task.status === "已完成" ? "completed" : "incomplete");
 
-        taskRow.innerHTML = `
-            <td><input type="text" class="task-text" value="${task.text}" disabled /></td>
-            <td><input type="text" class="task-remark" value="${task.remark}" disabled /></td>
-            <td><span>${task.status}</span></td>
-            <td>
-                <button class="edit-button" onclick="editTask(${task.id})">编辑</button>
-                <button class="save-button" style="display: none;" onclick="saveTaskEdit(${task.id})">保存</button>
-                <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
-                <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
-                <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
-                <button class="complete-button" onclick="executeQuery('${task.text.replace(/\D/g, '')}')">执行查询</button>
-            </td>
-        `;
-        taskList.appendChild(taskRow);
-    });
-}
-// 完成任务
-function completeTask(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.get(taskId);
+                taskRow.innerHTML = `
+                    <td><input type="text" class="task-text" value="${task.text}" disabled /></td>
+                    <td><input type="text" class="task-remark" value="${task.remark}" disabled /></td>
+                    <td><span>${task.status}</span></td>
+                    <td>
+                        <button class="edit-button" onclick="editTask(${task.id})">编辑</button>
+                        <button class="save-button" style="display: none;" onclick="saveTaskEdit(${task.id})">保存</button>
+                        <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
+                        <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
+                        <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
+                    </td>
+                `;
+                taskList.appendChild(taskRow);
+            });
+        }
 
-    request.onsuccess = function(event) {
-        const task = event.target.result;
-        task.status = "已完成";
+        // 完成任务
+        function completeTask(taskId) {
+            const transaction = db.transaction([storeName], "readwrite");
+            const store = transaction.objectStore(storeName);
+            const request = store.get(taskId);
 
-        const updateRequest = store.put(task);
-        updateRequest.onsuccess = function() {
-            console.log("任务状态更新成功");
-            loadTasksFromIndexedDB();
-        };
-    };
-}
+            request.onsuccess = function(event) {
+                const task = event.target.result;
+                task.status = "已完成";
 
-// 删除任务
-function deleteTask(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.delete(taskId);
+                const updateRequest = store.put(task);
+                updateRequest.onsuccess = function() {
+                    console.log("任务状态更新成功");
+                    loadTasksFromIndexedDB();
+                };
+            };
+        }
 
-    request.onsuccess = function() {
-        console.log("任务删除成功");
-        loadTasksFromIndexedDB(); // 更新任务列表
-    };
-}
+        // 删除任务
+        function deleteTask(taskId) {
+            const transaction = db.transaction([storeName], "readwrite");
+            const store = transaction.objectStore(storeName);
+            const request = store.delete(taskId);
 
-     // 保存新任务
-function saveTask() {
-    const text = document.getElementById("task-text").value;
-    const remark = document.getElementById("task-remark").value;
+            request.onsuccess = function() {
+                console.log("任务删除成功");
+                loadTasksFromIndexedDB(); // 更新任务列表
+            };
+        }
 
-    if (text.trim() === "") {
-        alert("任务文本不能为空！");
-        return;
-    }
+        // 保存新任务
+        function saveTask() {
+            const text = document.getElementById("task-text").value;
+            const remark = document.getElementById("task-remark").value;
 
-    const task = {
-        text: text,
-        remark: remark,
-        status: "未使用", // 默认状态为未使用
-        createdAt: Date.now() // 记录创建时间
-    };
+            if (text.trim() === "") {
+                alert("任务文本不能为空！");
+                return;
+            }
 
-    addTaskToIndexedDB(task);
-}
+            const task = {
+                text: text,
+                remark: remark,
+                status: "未使用", // 默认状态为未使用
+                createdAt: Date.now() // 记录创建时间
+            };
 
+            addTaskToIndexedDB(task);
+        }
 
-     // 编辑任务
-function editTask(taskId) {
-    const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
-    
-    for (let row of taskRows) {
-        const editButton = row.querySelector(".edit-button");
-        
-        // 如果是当前编辑的任务行
-        if (editButton && editButton.getAttribute("onclick").includes(taskId)) {
-            const textInput = row.querySelector(".task-text");
-            const remarkInput = row.querySelector(".task-remark");
+        // 清空任务输入框
+        function clearTaskInputs() {
+            document.getElementById("task-text").value = "";
+            document.getElementById("task-remark").value = "";
+        }
 
-            // 启用输入框
-            textInput.disabled = false;
-            remarkInput.disabled = false;
+               // 编辑任务
+        function editTask(taskId) {
+            const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
+            
+            for (let row of taskRows) {
+                const taskIdInRow = row.querySelector("button").onclick.toString().match(/\d+/)[0];
+                if (parseInt(taskIdInRow) === taskId) {
+                    const textInput = row.querySelector(".task-text");
+                    const remarkInput = row.querySelector(".task-remark");
 
-            // 显示保存和取消按钮
-            row.querySelector(".save-button").style.display = "inline-block";
-            row.querySelector(".cancel-button").style.display = "inline-block";
-
-            // 隐藏编辑按钮
-            editButton.style.display = "none";
-
-            // 隐藏删除和完成按钮
-            row.querySelector(".delete-button").style.display = "none";
-            row.querySelector(".complete-button").style.display = "none";
+                    textInput.disabled = false;
+                    remarkInput.disabled = false;
+                    row.querySelector(".save-button").style.display = "inline-block";
+                    row.querySelector(".cancel-button").style.display = "inline-block";
+                    row.querySelector(".edit-button").style.display = "none";
+                }
+            }
 
             currentEditingTaskId = taskId;
         }
-    }
-}
 
-// 保存编辑的任务
-function saveTaskEdit(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.get(taskId);
+        // 保存编辑后的任务
+        function saveTaskEdit(taskId) {
+            const transaction = db.transaction([storeName], "readwrite");
+            const store = transaction.objectStore(storeName);
+            const request = store.get(taskId);
 
-    request.onsuccess = function(event) {
-        const task = event.target.result;
-        const row = Array.from(document.querySelectorAll("#task-list tbody tr")).find(row => {
-            const editButton = row.querySelector(".edit-button");
-            return editButton && editButton.getAttribute("onclick").includes(taskId);
-        });
+            request.onsuccess = function(event) {
+                const task = event.target.result;
+                const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
 
-        if (row) {
-            const textInput = row.querySelector(".task-text");
-            const remarkInput = row.querySelector(".task-remark");
+                for (let row of taskRows) {
+                    if (row.querySelector("button").onclick.toString().match(/\d+/)[0] == taskId) {
+                        const newText = row.querySelector(".task-text").value;
+                        const newRemark = row.querySelector(".task-remark").value;
 
-            task.text = textInput.value;
-            task.remark = remarkInput.value;
+                        task.text = newText;
+                        task.remark = newRemark;
 
-            const updateRequest = store.put(task);
-            updateRequest.onsuccess = function() {
-                console.log("任务编辑成功");
-
-                // 保存编辑后，重新加载任务列表
-                currentEditingTaskId = null;
-                loadTasksFromIndexedDB();
+                        store.put(task).onsuccess = function() {
+                            console.log("任务编辑成功");
+                            loadTasksFromIndexedDB();  // 重新加载任务
+                        };
+                    }
+                }
             };
         }
-    };
 
-    request.onerror = function(event) {
-        console.error("编辑保存任务失败", event);
-    };
-}
+        // 取消编辑
+        function cancelEdit(taskId) {
+            loadTasksFromIndexedDB();
+        }
 
-// 取消编辑
-function cancelEdit(taskId) {
-    currentEditingTaskId = null;
-    loadTasksFromIndexedDB(); // 恢复原来的任务列表
-}
+        // 筛选任务
+        function filterTasks() {
+            loadTasksFromIndexedDB();
+        }
 
-// 筛选任务
-function filterTasks() {
-    loadTasksFromIndexedDB(); // 重新加载任务列表，应用筛选条件
-}
+        // 清空筛选条件
+        function clearFilters() {
+            document.getElementById("search").value = "";
+            document.getElementById("status-filter").value = "";
+            loadTasksFromIndexedDB();
+        }
 
-// 搜索任务
-function searchTasks() {
-    loadTasksFromIndexedDB(); // 重新加载任务列表，应用搜索条件
-}
+        // 搜索任务
+        function searchTasks() {
+            loadTasksFromIndexedDB();
+        }
     </script>
+
 
 </body>
 </html>
