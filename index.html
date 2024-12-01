@@ -319,24 +319,59 @@ function cancelCompleteTask(taskId) {
         }
 
         // 保存新任务
-        function saveTask() {
-            const text = document.getElementById("task-text").value;
-            const remark = document.getElementById("task-remark").value;
+function saveTask() {
+    const text = document.getElementById("task-text").value;
+    const remark = document.getElementById("task-remark").value;
 
-            if (text.trim() === "") {
-                alert("任务文本不能为空！");
-                return;
-            }
+    if (text.trim() === "") {
+        alert("任务文本不能为空！");
+        return;
+    }
 
+    // 使用正则表达式匹配连续的9位数字
+    const regex = /(\d{9})/g;
+    const matches = [...text.matchAll(regex)];
+
+    if (matches.length > 0) {
+        let startIndex = 0;
+        let taskCount = 1; // 序号计数
+
+        // 将匹配到的9位数字逐个处理
+        matches.forEach((match, index) => {
+            const matchText = match[0]; // 当前匹配的9位数字
+            const matchStart = match.index;  // 当前9位数字的起始位置
+            const matchEnd = matchStart + matchText.length; // 当前9位数字的结束位置
+
+            // 提取匹配前的文本
+            const newText = text.slice(startIndex, matchStart) + matchText;  // 只保留当前9位数字
+            const newRemark = remark + taskCount;  // 给备注添加序号
+
+            // 创建任务对象并保存
             const task = {
-                text: text,
-                remark: remark,
-                status: "未使用", // 默认状态为未使用
-                createdAt: Date.now() // 记录创建时间
+                text: newText,  // 任务文本
+                remark: newRemark,  // 备注
+                status: "未使用",  // 默认状态为未使用
+                createdAt: Date.now()  // 记录创建时间
             };
 
-            addTaskToIndexedDB(task);
-        }
+            addTaskToIndexedDB(task);  // 保存任务到IndexedDB
+            taskCount++;  // 增加序号
+            startIndex = matchEnd;  // 更新起始位置，跳过已经处理的部分
+        });
+    } else {
+        // 如果没有找到连续的9位数字，保存为单个任务
+        const task = {
+            text: text,
+            remark: remark,
+            status: "未使用", // 默认状态为未使用
+            createdAt: Date.now() // 记录创建时间
+        };
+        addTaskToIndexedDB(task); // 保存任务
+    }
+
+    clearTaskInputs(); // 清空任务输入框
+}
+
 
         // 清空任务输入框
         function clearTaskInputs() {
