@@ -183,12 +183,31 @@ function autoResizeTextarea() {
 }
 
 function executeQuery(taskText) {
-console.log(taskText);
-        // 仅保留数字并传递到查询页面
-        const pid = taskText.replace(/\D/g, ''); 
-console.log(pid);
-        window.open(`https://booksreaders1.github.io/?pid=${pid}`, '_blank');
+    console.log("原始文本:", taskText);
+
+    // 使用正则表达式匹配连续的9位数字
+    const regex = /(\d{9})/g;
+    const matches = [...taskText.matchAll(regex)];
+
+    let resultText = "";
+	console.log('matches',matches)
+    if (matches.length > 0) {
+        // 如果找到连续的9位数字，则取第一个匹配
+        resultText = matches[0][0]; // 获取第一个匹配的9位数字
+    } else {
+        // 如果没有9位数字，则提取所有数字
+        const digits = taskText.match(/\d/g); // 只提取数字字符
+        if (digits) {
+            resultText = digits.join('').slice(0, 9); // 连接数字字符并取前9位
+        }
     }
+
+    console.log("处理后的数字:", resultText);
+
+    // 使用处理后的数字进行查询
+    window.open(`https://booksreaders1.github.io/?pid=${resultText}`, '_blank');
+}
+
 
         // 添加任务到 IndexedDB
         function addTaskToIndexedDB(task) {
@@ -258,7 +277,7 @@ function loadTasksFromIndexedDB() {
                     ? `<button class="complete-button" onclick="cancelCompleteTask(${task.id})">取消完成</button>` 
                     : `<button class="complete-button" onclick="completeTask(${task.id})">完成</button>`
                 }
-<button class="complete-button" onclick="executeQuery('${task.text.replace(/\D/g, '')}')">执行查询</button>
+<button class="complete-button" onclick="executeQuery('${task.text}')">执行查询</button>
 
             </td>
         `;
