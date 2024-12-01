@@ -63,6 +63,13 @@
             font-size: 1.5em;
             margin-bottom: 10px;
         }
+input[type="text"].task-text,
+input[type="text"].task-remark {
+    width: 100%; /* 使输入框填满父容器宽度 */
+    min-height: 40px; /* 设置最小高度 */
+    resize: vertical; /* 允许垂直调整大小 */
+}
+
     </style>
 </head>
 <body>
@@ -160,7 +167,20 @@ window.onload = function () {
         // 可选：立即调用任务筛选函数，依据 pid 查询任务
        searchTasks(pid, true);  // true 表示由 URL 传参进行查询
     }
+    autoResizeTextarea(); // 初始化时启用自动调整高度功能
+
 };
+
+// 自动调整输入框高度
+function autoResizeTextarea() {
+    const taskTextAreas = document.querySelectorAll('.task-text, .task-remark');
+    taskTextAreas.forEach(textarea => {
+        textarea.addEventListener('input', function () {
+            textarea.style.height = 'auto'; // 重置高度
+            textarea.style.height = `${textarea.scrollHeight}px`; // 设置为内容高度
+        });
+    });
+}
 
 function executeQuery(taskText) {
 console.log(taskText);
