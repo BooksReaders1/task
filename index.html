@@ -205,7 +205,7 @@ function executeQuery(taskText) {
     console.log("处理后的数字:", resultText);
 
     // 使用处理后的数字进行查询
-    window.open(`https://booksreaders1.github.io/?pid=${resultText}`, '_blank');
+    window.location.href = `https://booksreaders1.github.io/?pid=${resultText}`;
 }
 
 
