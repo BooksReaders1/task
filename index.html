@@ -131,12 +131,6 @@ input[type="text"].task-remark {
     <div class="filter-section">
         <div class="filter-title">条件筛选</div>
         <input type="text" id="search" placeholder="搜索任务..." oninput="searchTasks()" />
-        <select id="status-filter" onchange="filterTasks()">
-            <option value="">全部任务</option>
-            <option value="未使用">未完成</option>
-            <option value="已完成">已完成</option>
-<option value="已失效">已失效</option> <!-- 新增失效筛选 -->
-        </select>
         <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
     </div>
 	
@@ -375,13 +369,11 @@ function cancelInvalidateTask(taskId) {
     const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
     taskList.innerHTML = ""; // 清空列表
 
-    const filter = document.getElementById("status-filter").value;
     const searchTerm = document.getElementById("search").value.toLowerCase();
 
     const filteredTasks = tasks.filter(task => {
-        const matchesStatus = filter ? task.status === filter : true;
         const matchesSearch = task.text.toLowerCase().includes(searchTerm) || task.remark.toLowerCase().includes(searchTerm);
-        return matchesStatus && matchesSearch;
+        return  matchesSearch;
     });
 
     filteredTasks.forEach(task => {
@@ -628,7 +620,6 @@ function saveTask() {
         // 清空筛选条件
         function clearFilters() {
             document.getElementById("search").value = "";
-            document.getElementById("status-filter").value = "";
             loadTasksFromIndexedDB();
         }
 
