@@ -91,6 +91,7 @@ input[type="text"].task-remark {
             <option value="">全部任务</option>
             <option value="未使用">未完成</option>
             <option value="已完成">已完成</option>
+<option value="已失效">已失效</option> <!-- 新增失效筛选 -->
         </select>
         <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
     </div>
@@ -246,6 +247,24 @@ function loadTasksFromIndexedDB() {
     });
 }
 
+// 取消失效任务
+function cancelInvalidateTask(taskId) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(taskId);
+
+    request.onsuccess = function(event) {
+        const task = event.target.result;
+        task.status = "未使用";  // 更新任务状态为“未使用”
+
+        const updateRequest = store.put(task);
+        updateRequest.onsuccess = function() {
+            console.log("任务状态更新为未使用");
+            loadTasksFromIndexedDB();  // 重新加载任务列表
+        };
+    };
+}
+
         // 展示任务列表
       function displayTasks(tasks) {
     const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
@@ -262,7 +281,7 @@ function loadTasksFromIndexedDB() {
 
     filteredTasks.forEach(task => {
         const taskRow = document.createElement("tr");
-        taskRow.classList.add(task.status === "已完成" ? "completed" : "incomplete");
+        taskRow.classList.add(task.status === "已完成" ? "completed" : (task.status === "已失效" ? "expired" : "incomplete"));
 
         taskRow.innerHTML = `
             <td><input type="text" class="task-text" value="${task.text}" disabled /></td>
@@ -273,10 +292,17 @@ function loadTasksFromIndexedDB() {
                 <button class="save-button" style="display: none;" onclick="saveTaskEdit(${task.id})">保存</button>
                 <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
                 <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
-                ${task.status === "已完成" 
-                    ? `<button class="complete-button" onclick="cancelCompleteTask(${task.id})">取消完成</button>` 
-                    : `<button class="complete-button" onclick="completeTask(${task.id})">完成</button>`
-                }
+      ${task.status === "未使用" 
+            ? `
+                <button class="invalidate-button" onclick="invalidateTask(${task.id})">失效</button>
+                <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
+            `
+            : task.status === "已完成"
+            ? `<button class="complete-button" onclick="cancelCompleteTask(${task.id})">取消完成</button>`
+            : task.status === "已失效"
+            ? `<button class="invalidate-button" onclick="cancelInvalidateTask(${task.id})">取消失效</button>`
+            : ""
+        }
 <button class="complete-button" onclick="executeQuery('${task.text}')">执行查询</button>
 
             </td>
@@ -287,6 +313,23 @@ console.log('arr',filteredTasks.length >0)
     return filteredTasks.length >0
 }
 
+// 失效任务操作
+function invalidateTask(taskId) {
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.get(taskId);
+
+    request.onsuccess = function(event) {
+        const task = event.target.result;
+        task.status = "已失效";  // 更改为已失效状态
+
+        const updateRequest = store.put(task);
+        updateRequest.onsuccess = function() {
+            console.log("任务状态更新为已失效");
+            loadTasksFromIndexedDB();  // 重新加载任务列表
+        };
+    };
+}
 
 // 取消完成任务
 function cancelCompleteTask(taskId) {
