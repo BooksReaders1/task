@@ -9,6 +9,50 @@
             font-family: Arial, sans-serif;
             padding: 20px;
         }
+/* 外层容器，使用 flexbox 布局 */
+.stats-cards {
+    display: flex;
+    flex-wrap: wrap;         /* 允许换行 */
+    gap: 10px;               /* 设置卡片之间的间距 */
+    justify-content: space-between;  /* 确保卡片在一行内均匀分布 */
+    margin: 20px 0;
+}
+
+/* 卡片样式 */
+.stats-card {
+    flex: 1 1 calc(25% - 10px);   /* 每个卡片占 25% 的宽度，并减去间隔 */
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    box-sizing: border-box; /* 确保边框和内边距不会影响宽度计算 */
+    min-width: 220px;  /* 设置一个最小宽度，避免卡片过小 */
+    transition: transform 0.2s; /* 为卡片添加一个过渡效果 */
+}
+
+.stats-card:hover {
+    transform: translateY(-5px); /* 鼠标悬停时轻微上升 */
+}
+
+/* 各种状态的颜色 */
+.stats-card.all {
+    background-color: #007bff; /* 蓝色 */
+}
+
+.stats-card.incomplete {
+    background-color: #dc3545; /* 红色 */
+}
+
+.stats-card.completed {
+    background-color: #28a745; /* 绿色 */
+}
+		
+		.stats-card.expired {
+		    background-color: #6c757d; /* 灰色 */
+		}
+
+
 
         .task-table {
             width: 100%;
@@ -95,6 +139,27 @@ input[type="text"].task-remark {
         </select>
         <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
     </div>
+	
+	<!-- 统计卡片 -->
+	<div class="stats-cards">
+	    <div class="stats-card all" onclick="filterByStatus('')">
+	        <h3>全部任务</h3>
+	        <span id="total-tasks">0</span>
+	    </div>
+	    <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
+	        <h3>未完成</h3>
+	        <span id="incomplete-tasks">0</span>
+	    </div>
+	    <div class="stats-card completed" onclick="filterByStatus('已完成')">
+	        <h3>已完成</h3>
+	        <span id="completed-tasks">0</span>
+	    </div>
+	    <div class="stats-card expired" onclick="filterByStatus('已失效')">
+	        <h3>已失效</h3>
+	        <span id="expired-tasks">0</span>
+	    </div>
+	</div>
+
 
     <h2>任务列表</h2>
     <table class="task-table" id="task-list">
@@ -152,6 +217,50 @@ input[type="text"].task-remark {
             objectStore.createIndex("createdAt", "createdAt", { unique: false }); // 创建创建时间索引
             console.log("对象存储空间创建成功");
         };
+		
+		// 获取任务的统计信息
+		function updateTaskStats() {
+		    const transaction = db.transaction([storeName], "readonly");
+		    const store = transaction.objectStore(storeName);
+		    const request = store.getAll();
+		
+		    request.onsuccess = function(event) {
+		        const tasks = event.target.result;
+		        const total = tasks.length;
+		        const incomplete = tasks.filter(task => task.status === '未使用').length;
+		        const completed = tasks.filter(task => task.status === '已完成').length;
+		        const expired = tasks.filter(task => task.status === '已失效').length;
+		
+		        // 更新卡片显示
+		        document.getElementById('total-tasks').textContent = total;
+		        document.getElementById('incomplete-tasks').textContent = incomplete;
+		        document.getElementById('completed-tasks').textContent = completed;
+		        document.getElementById('expired-tasks').textContent = expired;
+		    };
+		}
+		
+		// 筛选并展示特定状态的任务
+		function filterByStatus(status) {
+		    const transaction = db.transaction([storeName], "readonly");
+		    const store = transaction.objectStore(storeName);
+		    const request = store.getAll();
+		
+		    request.onsuccess = function(event) {
+		        const tasks = event.target.result;
+		        let filteredTasks = tasks;
+		
+		        if (status) {
+		            filteredTasks = tasks.filter(task => task.status === status);
+		        }
+		
+		        // 对筛选后的任务按创建时间倒叙排序
+		        filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
+		
+		        // 重新展示任务列表
+		        displayTasks(filteredTasks);
+		    };
+		}
+
 
 window.onload = function () {
 
@@ -228,24 +337,18 @@ function executeQuery(taskText) {
         }
 // 获取任务列表并展示
 function loadTasksFromIndexedDB() {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readonly");
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();  // 获取所有任务
+    const transaction = db.transaction([storeName], "readonly");
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
 
-        request.onsuccess = function(event) {
-            const tasks = event.target.result;
-            tasks.sort((a, b) => b.createdAt - a.createdAt); // 按时间倒序排序
-             // 展示任务
-            resolve( displayTasks(tasks));  // 返回任务数据
-        };
-
-        request.onerror = function(event) {
-            console.log("读取任务失败", event);
-            reject("任务加载失败");
-        };
-    });
+    request.onsuccess = function(event) {
+        const tasks = event.target.result;
+        tasks.sort((a, b) => b.createdAt - a.createdAt); // 按时间倒序排序
+        displayTasks(tasks); // 展示任务
+        updateTaskStats(); // 更新任务统计卡片
+    };
 }
+
 
 // 取消失效任务
 function cancelInvalidateTask(taskId) {
@@ -260,6 +363,8 @@ function cancelInvalidateTask(taskId) {
         const updateRequest = store.put(task);
         updateRequest.onsuccess = function() {
             console.log("任务状态更新为未使用");
+			        updateTaskStats(); // 更新任务统计卡片
+
             loadTasksFromIndexedDB();  // 重新加载任务列表
         };
     };
@@ -281,6 +386,17 @@ function cancelInvalidateTask(taskId) {
 
     filteredTasks.forEach(task => {
         const taskRow = document.createElement("tr");
+		// 根据状态设置卡片的颜色
+		        let cardClass = 'task-card';
+		        if (task.status === "已完成") {
+		            cardClass += ' completed';
+		        } else if (task.status === "已失效") {
+		            cardClass += ' expired';
+		        } else if (task.status === "未完成") {
+		            cardClass += ' incomplete';
+		        } else {
+		            cardClass += ' all';
+		        }
         taskRow.classList.add(task.status === "已完成" ? "completed" : (task.status === "已失效" ? "expired" : "incomplete"));
 
         taskRow.innerHTML = `
@@ -326,6 +442,8 @@ function invalidateTask(taskId) {
         const updateRequest = store.put(task);
         updateRequest.onsuccess = function() {
             console.log("任务状态更新为已失效");
+			        updateTaskStats(); // 更新任务统计卡片
+
             loadTasksFromIndexedDB();  // 重新加载任务列表
         };
     };
@@ -344,6 +462,8 @@ function cancelCompleteTask(taskId) {
         const updateRequest = store.put(task);
         updateRequest.onsuccess = function() {
             console.log("任务状态更新为未使用");
+			        updateTaskStats(); // 更新任务统计卡片
+
             loadTasksFromIndexedDB();  // 重新加载任务列表
         };
     };
@@ -363,6 +483,8 @@ function cancelCompleteTask(taskId) {
                 const updateRequest = store.put(task);
                 updateRequest.onsuccess = function() {
                     console.log("任务状态更新成功");
+					        updateTaskStats(); // 更新任务统计卡片
+
                     loadTasksFromIndexedDB();
                 };
             };
@@ -376,6 +498,8 @@ function cancelCompleteTask(taskId) {
 
             request.onsuccess = function() {
                 console.log("任务删除成功");
+				        updateTaskStats(); // 更新任务统计卡片
+
                 loadTasksFromIndexedDB(); // 更新任务列表
             };
         }
@@ -430,6 +554,8 @@ function saveTask() {
         };
         addTaskToIndexedDB(task); // 保存任务
     }
+	        updateTaskStats(); // 更新任务统计卡片
+
 
     clearTaskInputs(); // 清空任务输入框
 }
