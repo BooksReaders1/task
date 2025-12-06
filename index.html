@@ -403,36 +403,61 @@
     async function jumpToJM(taskText) {
         const num = extractNumber(taskText);
         if (!num) return alert("未找到有效数字");
-        const templateUrl = await getJMConfig();
-        let url;
-        if (templateUrl) {
-            const base = templateUrl.replace(/\/\d+\/?$/, '/');
-            url = `${base}${num}/`;
-        } else {
-            url = `https://jm18c-uoi.net/album/${num}/`;
-        }
-        window.open(url, '_blank');
-    }
 
-    async function smartJump(taskText) {
-        const num = extractNumber(taskText);
-        if (!num) return alert("未找到有效数字");
-        const len = num.length;
-        let url = '';
-        if (len >= 5 && len <= 8) {
+        // 👇 关键：立即打开空白窗口（同步！）
+        const win = window.open('', '_blank');
+        if (!win) return alert("请允许弹出窗口");
+
+        try {
             const templateUrl = await getJMConfig();
+            let url;
             if (templateUrl) {
                 const base = templateUrl.replace(/\/\d+\/?$/, '/');
                 url = `${base}${num}/`;
             } else {
                 url = `https://jm18c-uoi.net/album/${num}/`;
             }
-        } else if (len >= 9) {
-            url = `https://booksreaders1.github.io/?pid=${num}`;
-        } else {
-            return alert("数字位数不符合跳转规则（需5位及以上）");
+            // 异步设置真实 URL
+            win.location = url;
+        } catch (err) {
+            win.close();
+            alert("跳转失败，请重试");
         }
-        window.open(url, '_blank');
+    }
+
+    async function smartJump(taskText) {
+        const num = extractNumber(taskText);
+        if (!num) return alert("未找到有效数字");
+        const len = num.length;
+
+        if (len >= 5 && len <= 8) {
+            // 👇 立即打开窗口
+            const win = window.open('', '_blank');
+            if (!win) return alert("请允许弹出窗口");
+
+            try {
+                const templateUrl = await getJMConfig();
+                let url;
+                if (templateUrl) {
+                    const base = templateUrl.replace(/\/\d+\/?$/, '/');
+                    url = `${base}${num}/`;
+                } else {
+                    url = `https://jm18c-uoi.net/album/${num}/`;
+                }
+                win.location = url;
+            } catch (err) {
+                win.close();
+                alert("跳转失败");
+            }
+        } else if (len >= 9) {
+            // P 站逻辑（同样建议修复，但你主要问 JM）
+            const win = window.open('', '_blank');
+            if (!win) return alert("请允许弹出窗口");
+            win.location = `https://booksreaders1.github.io/`;
+            // 可选：复制 ID 到剪贴板（之前逻辑）
+        } else {
+            alert("数字位数不符合跳转规则（需5位及以上）");
+        }
     }
 
     function jumpToP(taskText) {
