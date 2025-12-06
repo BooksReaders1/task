@@ -35,27 +35,29 @@
         }
 
         /* 按钮语义化颜色 */
-        .btn-edit { background-color: #FF9800; color: white; } /* 橙黄 - 编辑（专属色） */
-        .btn-save       { background-color: #28a745; color: white; }       /* 绿 - 保存 */
-        .btn-cancel     { background-color: #ffc107; color: black; }       /* 黄 - 取消 */
-        .btn-delete     { background-color: #dc3545; color: white; }       /* 红 - 删除 */
-        .btn-invalidate { background-color: #6c757d; color: white; }       /* 灰 - 失效 */
-        .btn-complete   { background-color: #28a745; color: white; }       /* 绿 - 完成 */
-        .btn-restore    { background-color: #17a2b8; color: white; }       /* 蓝 - 取消完成/失效 */
-        .btn-smart      { background-color: #ff6f00; color: white; }       /* 橙 - 智能跳转 */
-        .btn-jm         { background-color: #7b1fa2; color: white; }       /* 紫 - JM */
-        .btn-p          { background-color: #007bff; color: white; }       /* 蓝 - P站 */
-        .btn-paste      { background-color: #17a2b8; color: white; }       /* 蓝 - 粘贴 */
-        .btn-clear      { background-color: #6c757d; color: white; }       /* 灰 - 清空条件 */
-        .btn-save-new   { background-color: #28a745; color: white; }       /* 绿 - 保存新任务 */
-        .btn-batch      { background-color: #e91e63; color: white; }       /* 粉 - 批量查询（预留） */
+        .btn-edit       { background-color: #FF9800; color: white; }   /* 橙黄 - 编辑（专属） */
+        .btn-save       { background-color: #28a745; color: white; }   /* 绿 - 保存 */
+        .btn-cancel     { background-color: #ffc107; color: black; }   /* 黄 - 取消 */
+        .btn-delete     { background-color: #dc3545; color: white; }   /* 红 - 删除 */
+        .btn-invalidate { background-color: #6c757d; color: white; }   /* 灰 - 失效 */
+        .btn-complete   { background-color: #28a745; color: white; }   /* 绿 - 完成 */
+        .btn-restore    { background-color: #17a2b8; color: white; }   /* 蓝 - 取消完成/失效 */
+        .btn-smart      { background-color: #ff6f00; color: white; }   /* 深橙 - 智能跳转 */
+        .btn-jm         { background-color: #7b1fa2; color: white; }   /* 紫 - JM */
+        .btn-p          { background-color: #007bff; color: white; }   /* 蓝 - P站 */
+        .btn-paste      { background-color: #17a2b8; color: white; }   /* 蓝 - 粘贴 */
+        .btn-clear      { background-color: #6c757d; color: white; }   /* 灰 - 清空条件 */
+        .btn-save-new   { background-color: #28a745; color: white; }   /* 绿 - 保存新任务 */
+        .btn-favorite   { background-color: #e91e63; color: white; }   /* 粉红 - 喜欢 */
+        .btn-unfavorite { background-color: #f48fb1; color: black; }   /* 浅粉 - 取消喜欢 */
 
         .stats-cards {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 10px;
             justify-content: space-between;
             margin: 20px 0;
+            -webkit-overflow-scrolling: touch; /* 提升移动端滚动体验 */
         }
 
         .stats-card {
@@ -66,7 +68,7 @@
             text-align: center;
             cursor: pointer;
             box-sizing: border-box;
-            min-width: 220px;
+            min-width: 0;
             transition: transform 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -75,10 +77,11 @@
             transform: translateY(-5px);
         }
 
-        .stats-card.all { background-color: #007bff; }
+        .stats-card.all      { background-color: #007bff; }
         .stats-card.incomplete { background-color: #dc3545; }
-        .stats-card.completed { background-color: #28a745; }
-        .stats-card.expired { background-color: #6c757d; }
+        .stats-card.completed  { background-color: #28a745; }
+        .stats-card.expired    { background-color: #6c757d; }
+        .stats-card.favorite   { background-color: #e91e63; } /* 新增喜欢卡片 */
 
         .task-table {
             width: 100%;
@@ -104,7 +107,9 @@
         .task-table .completed { background-color: #d4edda; }
         .task-table .incomplete { background-color: #f8d7da; }
         .task-table .expired { background-color: #e2e3e5; }
-
+        .task-table .favorite {
+            background-color: #e3f2fd; /* 浅蓝色，高可辨识度 */
+        }
         input[type="text"].task-text,
         input[type="text"].task-remark {
             width: 100%;
@@ -149,6 +154,10 @@
         <h3>全部任务</h3>
         <span id="total-tasks">0</span>
     </div>
+    <div class="stats-card favorite" onclick="filterByFavorite()">
+        <h3>喜欢</h3>
+        <span id="favorite-tasks">0</span>
+    </div>
     <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
         <h3>未完成</h3>
         <span id="incomplete-tasks">0</span>
@@ -183,7 +192,7 @@
     const storeName = "tasks";
     let currentEditingTaskId = null;
 
-    const request = indexedDB.open(dbName, 1);
+    const request = indexedDB.open(dbName, 2); // ⚠️ 注意：版本号升级到 2
 
     request.onerror = function(event) {
         console.error("数据库打开失败", event);
@@ -191,7 +200,6 @@
 
     request.onsuccess = function(event) {
         db = event.target.result;
-        console.log("数据库打开成功");
         loadTasksFromIndexedDB();
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -201,17 +209,29 @@
             if (inputField) {
                 inputField.value = pid;
             }
-            console.log('Pid from URL:', pid);
             searchTasks(pid, true);
         }
     };
 
     request.onupgradeneeded = function(event) {
         db = event.target.result;
-        const objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
-        objectStore.createIndex("status", "status", { unique: false });
-        objectStore.createIndex("createdAt", "createdAt", { unique: false });
-        console.log("对象存储空间创建成功");
+        let objectStore;
+        if (!db.objectStoreNames.contains(storeName)) {
+            objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+        } else {
+            objectStore = event.target.transaction.objectStore(storeName);
+        }
+        // 确保索引存在
+        if (!objectStore.indexNames.contains("status")) {
+            objectStore.createIndex("status", "status", { unique: false });
+        }
+        if (!objectStore.indexNames.contains("createdAt")) {
+            objectStore.createIndex("createdAt", "createdAt", { unique: false });
+        }
+        if (!objectStore.indexNames.contains("favorite")) {
+            objectStore.createIndex("favorite", "favorite", { unique: false });
+        }
+        console.log("对象存储空间和索引已配置");
     };
 
     function updateTaskStats() {
@@ -221,15 +241,21 @@
 
         request.onsuccess = function(event) {
             const tasks = event.target.result;
+            tasks.forEach(task => {
+                if (task.favorite === undefined) task.favorite = false;
+            });
+
             const total = tasks.length;
             const incomplete = tasks.filter(task => task.status === '未使用').length;
             const completed = tasks.filter(task => task.status === '已完成').length;
             const expired = tasks.filter(task => task.status === '已失效').length;
+            const favorite = tasks.filter(task => task.favorite).length;
 
             document.getElementById('total-tasks').textContent = total;
             document.getElementById('incomplete-tasks').textContent = incomplete;
             document.getElementById('completed-tasks').textContent = completed;
             document.getElementById('expired-tasks').textContent = expired;
+            document.getElementById('favorite-tasks').textContent = favorite;
         };
     }
 
@@ -240,9 +266,28 @@
 
         request.onsuccess = function(event) {
             const tasks = event.target.result;
+            tasks.forEach(task => {
+                if (task.favorite === undefined) task.favorite = false;
+            });
             let filteredTasks = status ? tasks.filter(task => task.status === status) : tasks;
             filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
             displayTasks(filteredTasks);
+        };
+    }
+
+    function filterByFavorite() {
+        const transaction = db.transaction([storeName], "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onsuccess = function(event) {
+            const tasks = event.target.result;
+            tasks.forEach(task => {
+                if (task.favorite === undefined) task.favorite = false;
+            });
+            const filtered = tasks.filter(task => task.favorite);
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+            displayTasks(filtered);
         };
     }
 
@@ -252,31 +297,18 @@
         if (pid) {
             const inputField = document.getElementById('search');
             if (inputField) inputField.value = pid;
-            console.log('Pid from URL:', pid);
             searchTasks(pid, true);
         }
     };
 
-    function executeQuery(taskText) {
-        const regex = /(\d{9})/g;
-        const matches = [...taskText.matchAll(regex)];
-        let resultText = "";
-        if (matches.length > 0) {
-            resultText = matches[0][0];
-        } else {
-            const digits = taskText.match(/\d/g);
-            if (digits) resultText = digits.join('').slice(0, 9);
-        }
-        window.location.href = `https://booksreaders1.github.io/?pid=${resultText}`;
-    }
-
     function addTaskToIndexedDB(task) {
+        // 确保新任务有 favorite 字段
+        if (task.favorite === undefined) task.favorite = false;
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
         const request = store.add(task);
 
         request.onsuccess = function() {
-            console.log("任务添加成功");
             loadTasksFromIndexedDB();
             clearTaskInputs();
         };
@@ -293,6 +325,9 @@
 
             request.onsuccess = function(event) {
                 const tasks = event.target.result;
+                tasks.forEach(task => {
+                    if (task.favorite === undefined) task.favorite = false;
+                });
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
                 const hasMatch = displayTasks(tasks);
                 updateTaskStats();
@@ -301,17 +336,31 @@
         });
     }
 
-    function cancelInvalidateTask(taskId) {
+    function toggleFavorite(taskId) {
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
         const request = store.get(taskId);
 
         request.onsuccess = function(event) {
             const task = event.target.result;
+            task.favorite = !task.favorite;
+            store.put(task).onsuccess = function() {
+                updateTaskStats();
+                loadTasksFromIndexedDB();
+            };
+        };
+    }
+
+    // === 以下函数与之前相同，仅 displayTasks 有更新 ===
+
+    function cancelInvalidateTask(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
+        request.onsuccess = function(event) {
+            const task = event.target.result;
             task.status = "未使用";
-            const updateRequest = store.put(task);
-            updateRequest.onsuccess = function() {
-                console.log("任务状态更新为未使用");
+            store.put(task).onsuccess = function() {
                 updateTaskStats();
                 loadTasksFromIndexedDB();
             };
@@ -328,20 +377,36 @@
         );
 
         filteredTasks.forEach(task => {
-            const escapedText = task.text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const escapedRemark = task.remark.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const escapedText = (task.text || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const escapedRemark = (task.remark || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
             const statusClass =
                 task.status === "已完成" ? "completed" :
                 task.status === "已失效" ? "expired" : "incomplete";
 
             const taskRow = document.createElement("tr");
-            taskRow.className = statusClass;
+            // 设置行样式：喜欢优先级最高
+            if (task.favorite) {
+                taskRow.classList.add("favorite");
+            } else {
+                if (task.status === "已完成") {
+                    taskRow.classList.add("completed");
+                } else if (task.status === "已失效") {
+                    taskRow.classList.add("expired");
+                } else {
+                    taskRow.classList.add("incomplete");
+                }
+            }
 
             taskRow.innerHTML = `
                 <td><input type="text" class="task-text" value="${escapedText}" disabled /></td>
                 <td><input type="text" class="task-remark" value="${escapedRemark}" disabled /></td>
-                <td><span>${task.status}</span></td>
+                <td>
+                    <span>
+                        ${task.favorite ? '❤️ ' : ''}
+                        ${task.status}
+                    </span>
+                </td>
                 <td>
                     <button class="unified-button btn-edit" onclick="editTask(${task.id})">✏️ 编辑</button>
                     <button class="unified-button btn-save" style="display: none;" onclick="saveTaskEdit(${task.id})">💾 保存</button>
@@ -357,6 +422,10 @@
                         : task.status === "已失效"
                         ? `<button class="unified-button btn-restore" onclick="cancelInvalidateTask(${task.id})">↩️ 取消失效</button>`
                         : ""
+                    }
+                    ${task.favorite
+                        ? `<button class="unified-button btn-unfavorite" onclick="toggleFavorite(${task.id})">💔 取消喜欢</button>`
+                        : `<button class="unified-button btn-favorite" onclick="toggleFavorite(${task.id})">❤️ 喜欢</button>`
                     }
                     <button class="unified-button btn-smart" onclick="smartJump('${escapedText}')">🤖 智能跳转</button>
                     <button class="unified-button btn-jm" onclick="jumpToJM('${escapedText}')">📘 跳转到JM</button>
