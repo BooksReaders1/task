@@ -126,6 +126,7 @@ input[type="text"].task-remark {
     <input type="text" id="task-text" placeholder="输入任务"/>
     <input type="text" id="task-remark" placeholder="输入备注"/>
     <button onclick="saveTask()">保存任务</button>
+    <button onclick="pasteFromClipboard()" style="background-color: #17a2b8; color: white; margin-left: 8px;">粘贴</button>
 </div>
 
 <!-- 筛选部分 -->
@@ -501,6 +502,25 @@ function cancelCompleteTask(taskId) {
                 loadTasksFromIndexedDB(); // 更新任务列表
             };
         }
+
+// 从剪贴板粘贴文本到任务输入框，并自动保存
+async function pasteFromClipboard() {
+    try {
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) {
+            alert("剪贴板内容为空！");
+            return;
+        }
+        document.getElementById('task-text').value = text;
+        console.log('已粘贴内容:', text);
+
+        // 自动保存任务（复用 saveTask 逻辑）
+        saveTask();
+    } catch (err) {
+        console.error('读取剪贴板失败:', err);
+        alert('无法读取剪贴板内容。\n请确保页面在安全上下文（如 HTTPS 或 localhost）中运行。');
+    }
+}
 
         // 保存新任务
 function saveTask() {
