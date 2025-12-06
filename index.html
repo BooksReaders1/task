@@ -212,11 +212,11 @@
     request.onsuccess = e => {
         db = e.target.result;
         loadTasksFromIndexedDB();
-        const pid = new URLSearchParams(window.location.search).get('pid');
-        if (pid) {
-            document.getElementById('search').value = pid;
-            searchTasks(pid, true);
-        }
+<!--        const pid = new URLSearchParams(window.location.search).get('pid');-->
+<!--        if (pid) {-->
+<!--            document.getElementById('search').value = pid;-->
+<!--            searchTasks(pid, true);-->
+<!--        }-->
     };
 
     request.onupgradeneeded = e => {
@@ -649,13 +649,13 @@
         };
     }
 
-    window.onload = () => {
-        const pid = new URLSearchParams(window.location.search).get('pid');
-        if (pid) {
-            document.getElementById('search').value = pid;
-            searchTasks(pid, true);
-        }
-    };
+<!--    window.onload = () => {-->
+<!--        const pid = new URLSearchParams(window.location.search).get('pid');-->
+<!--        if (pid) {-->
+<!--            document.getElementById('search').value = pid;-->
+<!--            searchTasks(pid, true);-->
+<!--        }-->
+<!--    };-->
 </script>
 
 </body>
