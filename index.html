@@ -8,113 +8,120 @@
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
+            background-color: #fafafa;
         }
-/* 外层容器，使用 flexbox 布局 */
-.stats-cards {
-    display: flex;
-    flex-wrap: wrap;         /* 允许换行 */
-    gap: 10px;               /* 设置卡片之间的间距 */
-    justify-content: space-between;  /* 确保卡片在一行内均匀分布 */
-    margin: 20px 0;
-}
 
-/* 卡片样式 */
-.stats-card {
-    flex: 1 1 calc(25% - 10px);   /* 每个卡片占 25% 的宽度，并减去间隔 */
-    padding: 15px;
-    border-radius: 8px;
-    color: white;
-    text-align: center;
-    cursor: pointer;
-    box-sizing: border-box; /* 确保边框和内边距不会影响宽度计算 */
-    min-width: 220px;  /* 设置一个最小宽度，避免卡片过小 */
-    transition: transform 0.2s; /* 为卡片添加一个过渡效果 */
-}
+        /* 统一按钮样式 */
+        .unified-button {
+            padding: 6px 12px;
+            margin: 4px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
 
-.stats-card:hover {
-    transform: translateY(-5px); /* 鼠标悬停时轻微上升 */
-}
+        .unified-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
 
-/* 各种状态的颜色 */
-.stats-card.all {
-    background-color: #007bff; /* 蓝色 */
-}
+        .unified-button:active {
+            transform: translateY(0);
+        }
 
-.stats-card.incomplete {
-    background-color: #dc3545; /* 红色 */
-}
+        /* 按钮语义化颜色 */
+        .btn-edit       { background-color: #6c757d; color: white; }       /* 灰 - 编辑 */
+        .btn-save       { background-color: #28a745; color: white; }       /* 绿 - 保存 */
+        .btn-cancel     { background-color: #ffc107; color: black; }       /* 黄 - 取消 */
+        .btn-delete     { background-color: #dc3545; color: white; }       /* 红 - 删除 */
+        .btn-invalidate { background-color: #6c757d; color: white; }       /* 灰 - 失效 */
+        .btn-complete   { background-color: #28a745; color: white; }       /* 绿 - 完成 */
+        .btn-restore    { background-color: #17a2b8; color: white; }       /* 蓝 - 取消完成/失效 */
+        .btn-smart      { background-color: #ff6f00; color: white; }       /* 橙 - 智能跳转 */
+        .btn-jm         { background-color: #7b1fa2; color: white; }       /* 紫 - JM */
+        .btn-p          { background-color: #007bff; color: white; }       /* 蓝 - P站 */
+        .btn-paste      { background-color: #17a2b8; color: white; }       /* 蓝 - 粘贴 */
+        .btn-clear      { background-color: #6c757d; color: white; }       /* 灰 - 清空条件 */
+        .btn-save-new   { background-color: #28a745; color: white; }       /* 绿 - 保存新任务 */
+        .btn-batch      { background-color: #e91e63; color: white; }       /* 粉 - 批量查询（预留） */
 
-.stats-card.completed {
-    background-color: #28a745; /* 绿色 */
-}
-		
-		.stats-card.expired {
-		    background-color: #6c757d; /* 灰色 */
-		}
+        .stats-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
 
+        .stats-card {
+            flex: 1 1 calc(25% - 10px);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            box-sizing: border-box;
+            min-width: 220px;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
 
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stats-card.all { background-color: #007bff; }
+        .stats-card.incomplete { background-color: #dc3545; }
+        .stats-card.completed { background-color: #28a745; }
+        .stats-card.expired { background-color: #6c757d; }
 
         .task-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
 
         .task-table th, .task-table td {
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
             text-align: left;
         }
 
         .task-table th {
-            background-color: #f4f4f4;
+            background-color: #f8f9fa;
+            font-weight: bold;
         }
 
-        .task-table .completed {
-            background-color: #d4edda; /* 绿色背景色 */
+        .task-table .completed { background-color: #d4edda; }
+        .task-table .incomplete { background-color: #f8d7da; }
+        .task-table .expired { background-color: #e2e3e5; }
+
+        input[type="text"].task-text,
+        input[type="text"].task-remark {
+            width: 100%;
+            min-height: 40px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
         }
 
-        .task-table .incomplete {
-            background-color: #f8d7da; /* 红色背景色 */
+        #task-text, #task-remark, #search {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 8px;
+            width: 200px;
         }
-
-        .edit-button, .save-button, .cancel-button {
-            padding: 5px 10px;
-            margin: 5px;
-            cursor: pointer;
-        }
-
-        .edit-button {
-            background-color: #f0ad4e;
-            color: white;
-        }
-
-        .save-button {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .cancel-button {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .filter-section {
-            margin-bottom: 20px;
-        }
-
-        .filter-title {
-            font-size: 1.5em;
-            margin-bottom: 10px;
-        }
-input[type="text"].task-text,
-input[type="text"].task-remark {
-    width: 100%; /* 使输入框填满父容器宽度 */
-    min-height: 40px; /* 设置最小高度 */
-    resize: vertical; /* 允许垂直调整大小 */
-}
-
-
     </style>
 </head>
 <body>
@@ -125,15 +132,15 @@ input[type="text"].task-remark {
 <div>
     <input type="text" id="task-text" placeholder="输入任务"/>
     <input type="text" id="task-remark" placeholder="输入备注"/>
-    <button onclick="saveTask()">保存任务</button>
-    <button onclick="pasteFromClipboard()" style="background-color: #17a2b8; color: white; margin-left: 8px;">粘贴</button>
+    <button class="unified-button btn-save-new" onclick="saveTask()">✅ 保存任务</button>
+    <button class="unified-button btn-paste" onclick="pasteFromClipboard()">📋 粘贴</button>
 </div>
 
 <!-- 筛选部分 -->
 <div class="filter-section">
     <div class="filter-title">条件筛选</div>
-    <input type="text" id="search" placeholder="搜索任务..." oninput="searchTasks()"/>
-    <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
+    <input type="text" id="search" placeholder="🔍 搜索任务..." oninput="searchTasks()"/>
+    <button class="unified-button btn-clear" onclick="clearFilters()">🧹 清空条件</button>
 </div>
 
 <!-- 统计卡片 -->
@@ -156,594 +163,428 @@ input[type="text"].task-remark {
     </div>
 </div>
 
-
 <h2>任务列表</h2>
 <table class="task-table" id="task-list">
     <thead>
-    <tr>
-        <th>任务文本</th>
-        <th>备注</th>
-        <th>状态</th>
-        <th>操作</th>
-    </tr>
+        <tr>
+            <th>任务文本</th>
+            <th>备注</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
     </thead>
     <tbody>
-    <!-- 动态任务列表 -->
     </tbody>
 </table>
 
 <script>
-        let db;
-        const dbName = "taskDB";  // 数据库名称
-        const storeName = "tasks"; // 存储任务的对象存储空间名称
-        let currentEditingTaskId = null; // 当前正在编辑的任务 ID
+    let db;
+    const dbName = "taskDB";
+    const storeName = "tasks";
+    let currentEditingTaskId = null;
 
-        // 打开 IndexedDB 数据库
-        const request = indexedDB.open(dbName, 1);
-
-        request.onerror = function(event) {
-            console.error("数据库打开失败", event);
-        };
-
-       request.onsuccess = function(event) {
-    db = event.target.result;
-    console.log("数据库打开成功");
-
-    // 仅在 db 初始化后调用
-    loadTasksFromIndexedDB();  // 加载任务列表
-
-    // 判断 URL 是否传递 pid 参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const pid = urlParams.get('pid');
-    if (pid) {
-        const inputField = document.getElementById('search');
-        if (inputField) {
-            inputField.value = pid;
-        }
-        console.log('Pid from URL:', pid);
-        searchTasks(pid, true);  // 搜索任务
-    }
-};
-
-
-        request.onupgradeneeded = function(event) {
-            db = event.target.result;
-            const objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true }); // 设置自增主键
-            objectStore.createIndex("status", "status", { unique: false });
-            objectStore.createIndex("createdAt", "createdAt", { unique: false }); // 创建创建时间索引
-            console.log("对象存储空间创建成功");
-        };
-		
-		// 获取任务的统计信息
-		function updateTaskStats() {
-		    const transaction = db.transaction([storeName], "readonly");
-		    const store = transaction.objectStore(storeName);
-		    const request = store.getAll();
-		
-		    request.onsuccess = function(event) {
-		        const tasks = event.target.result;
-		        const total = tasks.length;
-		        const incomplete = tasks.filter(task => task.status === '未使用').length;
-		        const completed = tasks.filter(task => task.status === '已完成').length;
-		        const expired = tasks.filter(task => task.status === '已失效').length;
-		
-		        // 更新卡片显示
-		        document.getElementById('total-tasks').textContent = total;
-		        document.getElementById('incomplete-tasks').textContent = incomplete;
-		        document.getElementById('completed-tasks').textContent = completed;
-		        document.getElementById('expired-tasks').textContent = expired;
-		    };
-		}
-		
-		// 筛选并展示特定状态的任务
-		function filterByStatus(status) {
-		    const transaction = db.transaction([storeName], "readonly");
-		    const store = transaction.objectStore(storeName);
-		    const request = store.getAll();
-		
-		    request.onsuccess = function(event) {
-		        const tasks = event.target.result;
-		        let filteredTasks = tasks;
-		
-		        if (status) {
-		            filteredTasks = tasks.filter(task => task.status === status);
-		        }
-		
-		        // 对筛选后的任务按创建时间倒叙排序
-		        filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
-		
-		        // 重新展示任务列表
-		        displayTasks(filteredTasks);
-		    };
-		}
-
-
-window.onload = function () {
-
-  const urlParams = new URLSearchParams(window.location.search);  // 获取 URL 参数
-    const pid = urlParams.get('pid');  // 获取传递的 pid 参数
-    
-    if (pid) {
-        // 假设任务管理页面有一个查询框，使用它填充 pid 参数
-        const inputField = document.getElementById('search');  // 获取搜索框
-        if (inputField) {
-            inputField.value = pid;  // 设置输入框的值为 pid 参数
-        }
-        console.log('Pid from URL:', pid);
-        // 可选：立即调用任务筛选函数，依据 pid 查询任务
-       searchTasks(pid, true);  // true 表示由 URL 传参进行查询
-    }
-    autoResizeTextarea(); // 初始化时启用自动调整高度功能
-
-};
-
-// 自动调整输入框高度
-function autoResizeTextarea() {
-    const taskTextAreas = document.querySelectorAll('.task-text, .task-remark');
-    taskTextAreas.forEach(textarea => {
-        textarea.addEventListener('input', function () {
-            textarea.style.height = 'auto'; // 重置高度
-            textarea.style.height = `${textarea.scrollHeight}px`; // 设置为内容高度
-        });
-    });
-}
-
-function executeQuery(taskText) {
-    console.log("原始文本:", taskText);
-
-    // 使用正则表达式匹配连续的9位数字
-    const regex = /(\d{9})/g;
-    const matches = [...taskText.matchAll(regex)];
-
-    let resultText = "";
-	console.log('matches',matches)
-    if (matches.length > 0) {
-        // 如果找到连续的9位数字，则取第一个匹配
-        resultText = matches[0][0]; // 获取第一个匹配的9位数字
-    } else {
-        // 如果没有9位数字，则提取所有数字
-        const digits = taskText.match(/\d/g); // 只提取数字字符
-        if (digits) {
-            resultText = digits.join('').slice(0, 9); // 连接数字字符并取前9位
-        }
-    }
-
-    console.log("处理后的数字:", resultText);
-
-    // 使用处理后的数字进行查询
-    window.location.href = `https://booksreaders1.github.io/?pid=${resultText}`;
-}
-
-
-        // 添加任务到 IndexedDB
-        function addTaskToIndexedDB(task) {
-            const transaction = db.transaction([storeName], "readwrite");
-            const store = transaction.objectStore(storeName);
-            const request = store.add(task);
-
-            request.onsuccess = function(event) {
-                console.log("任务添加成功");
-                loadTasksFromIndexedDB(); // 更新任务列表
-                clearTaskInputs(); // 清空任务输入框
-            };
-
-            request.onerror = function(event) {
-                console.log("任务添加失败", event);
-            };
-        }
-// 获取任务列表并展示
-function loadTasksFromIndexedDB() {
-    const transaction = db.transaction([storeName], "readonly");
-    const store = transaction.objectStore(storeName);
-    const request = store.getAll();
-
-    request.onsuccess = function(event) {
-        const tasks = event.target.result;
-        tasks.sort((a, b) => b.createdAt - a.createdAt); // 按时间倒序排序
-        displayTasks(tasks); // 展示任务
-        updateTaskStats(); // 更新任务统计卡片
-    };
-}
-
-
-// 取消失效任务
-function cancelInvalidateTask(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.get(taskId);
-
-    request.onsuccess = function(event) {
-        const task = event.target.result;
-        task.status = "未使用";  // 更新任务状态为“未使用”
-
-        const updateRequest = store.put(task);
-        updateRequest.onsuccess = function() {
-            console.log("任务状态更新为未使用");
-			        updateTaskStats(); // 更新任务统计卡片
-
-            loadTasksFromIndexedDB();  // 重新加载任务列表
-        };
-    };
-}
-
-        // 展示任务列表
-      function displayTasks(tasks) {
-    const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
-    taskList.innerHTML = ""; // 清空列表
-
-    const searchTerm = document.getElementById("search").value.toLowerCase();
-
-    const filteredTasks = tasks.filter(task => {
-        const matchesSearch = task.text.toLowerCase().includes(searchTerm) || task.remark.toLowerCase().includes(searchTerm);
-        return  matchesSearch;
-    });
-
-    filteredTasks.forEach(task => {
-        const taskRow = document.createElement("tr");
-		// 根据状态设置卡片的颜色
-		        let cardClass = 'task-card';
-		        if (task.status === "已完成") {
-		            cardClass += ' completed';
-		        } else if (task.status === "已失效") {
-		            cardClass += ' expired';
-		        } else if (task.status === "未完成") {
-		            cardClass += ' incomplete';
-		        } else {
-		            cardClass += ' all';
-		        }
-        taskRow.classList.add(task.status === "已完成" ? "completed" : (task.status === "已失效" ? "expired" : "incomplete"));
-
-        taskRow.innerHTML = `
-            <td><input type="text" class="task-text" value="${task.text}" disabled /></td>
-            <td><input type="text" class="task-remark" value="${task.remark}" disabled /></td>
-            <td><span>${task.status}</span></td>
-            <td>
-                <button class="edit-button" onclick="editTask(${task.id})">编辑</button>
-                <button class="save-button" style="display: none;" onclick="saveTaskEdit(${task.id})">保存</button>
-                <button class="cancel-button" style="display: none;" onclick="cancelEdit(${task.id})">取消</button>
-                <button class="delete-button" onclick="deleteTask(${task.id})">删除</button>
-      ${task.status === "未使用" 
-            ? `
-                <button class="invalidate-button" onclick="invalidateTask(${task.id})">失效</button>
-                <button class="complete-button" onclick="completeTask(${task.id})">完成</button>
-            `
-            : task.status === "已完成"
-            ? `<button class="complete-button" onclick="cancelCompleteTask(${task.id})">取消完成</button>`
-            : task.status === "已失效"
-            ? `<button class="invalidate-button" onclick="cancelInvalidateTask(${task.id})">取消失效</button>`
-            : ""
-        }
-<button class="smart-button" style="background-color: #ff9800; color: white; margin-right: 5px;"
-        onclick="smartJump('${task.text}')">智能跳转</button>
-<button class="jm-button" style="background-color: #673ab7; color: white; margin-right: 5px;"
-        onclick="jumpToJM('${task.text}')">跳转到JM</button>
-<button class="p-button" style="background-color: #28a745; color: white;"
-        onclick="jumpToP('${task.text}')">跳转到p站</button>
-
-            </td>
-        `;
-        taskList.appendChild(taskRow);
-    });
-console.log('arr',filteredTasks.length >0)
-    return filteredTasks.length >0
-}
-
-// 失效任务操作
-function invalidateTask(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.get(taskId);
-
-    request.onsuccess = function(event) {
-        const task = event.target.result;
-        task.status = "已失效";  // 更改为已失效状态
-
-        const updateRequest = store.put(task);
-        updateRequest.onsuccess = function() {
-            console.log("任务状态更新为已失效");
-			        updateTaskStats(); // 更新任务统计卡片
-
-            loadTasksFromIndexedDB();  // 重新加载任务列表
-        };
-    };
-}
-
-// 取消完成任务
-function cancelCompleteTask(taskId) {
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.get(taskId);
-
-    request.onsuccess = function(event) {
-        const task = event.target.result;
-        task.status = "未使用";  // 更改为未使用状态
-
-        const updateRequest = store.put(task);
-        updateRequest.onsuccess = function() {
-            console.log("任务状态更新为未使用");
-			        updateTaskStats(); // 更新任务统计卡片
-
-            loadTasksFromIndexedDB();  // 重新加载任务列表
-        };
-    };
-}
-
-
-        // 完成任务
-        function completeTask(taskId) {
-            const transaction = db.transaction([storeName], "readwrite");
-            const store = transaction.objectStore(storeName);
-            const request = store.get(taskId);
-
-            request.onsuccess = function(event) {
-                const task = event.target.result;
-                task.status = "已完成";
-
-                const updateRequest = store.put(task);
-                updateRequest.onsuccess = function() {
-                    console.log("任务状态更新成功");
-					        updateTaskStats(); // 更新任务统计卡片
-
-                    loadTasksFromIndexedDB();
-                };
-            };
-        }
-
-// 删除任务（带二次确认）
-function deleteTask(taskId) {
-    const confirmed = confirm("确定要删除此任务吗？该操作无法撤销。");
-    if (!confirmed) {
-        return; // 用户取消，不执行删除
-    }
-
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    const request = store.delete(taskId);
-
-    request.onsuccess = function() {
-        console.log("任务删除成功");
-        updateTaskStats(); // 更新任务统计卡片
-        loadTasksFromIndexedDB(); // 重新加载任务列表
-    };
+    const request = indexedDB.open(dbName, 1);
 
     request.onerror = function(event) {
-        console.error("任务删除失败", event);
-        alert("删除任务时发生错误，请重试。");
+        console.error("数据库打开失败", event);
     };
-}
 
-// 从剪贴板粘贴文本到任务输入框，并自动保存
-async function pasteFromClipboard() {
-    try {
-        const text = await navigator.clipboard.readText();
-        if (!text.trim()) {
-            alert("剪贴板内容为空！");
-            return;
-        }
-        document.getElementById('task-text').value = text;
-        console.log('已粘贴内容:', text);
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        console.log("数据库打开成功");
+        loadTasksFromIndexedDB();
 
-        // 自动保存任务（复用 saveTask 逻辑）
-        saveTask();
-    } catch (err) {
-        console.error('读取剪贴板失败:', err);
-        alert('无法读取剪贴板内容。\n请确保页面在安全上下文（如 HTTPS 或 localhost）中运行。');
-    }
-}
-
-        // 保存新任务
-function saveTask() {
-    const text = document.getElementById("task-text").value;
-    const remark = document.getElementById("task-remark").value;
-
-    if (text.trim() === "") {
-        alert("任务文本不能为空！");
-        return;
-    }
-
-    // 使用正则表达式匹配连续的9位数字
-    const regex = /(\d{9})/g;
-    const matches = [...text.matchAll(regex)];
-
-    if (matches.length > 0) {
-        let startIndex = 0;
-        let taskCount = 1; // 序号计数
-
-        // 将匹配到的9位数字逐个处理
-        matches.forEach((match, index) => {
-            const matchText = match[0]; // 当前匹配的9位数字
-            const matchStart = match.index;  // 当前9位数字的起始位置
-            const matchEnd = matchStart + matchText.length; // 当前9位数字的结束位置
-
-            // 提取匹配前的文本
-            const newText = text.slice(startIndex, matchStart) + matchText;  // 只保留当前9位数字
-            const newRemark = remark + taskCount;  // 给备注添加序号
-
-            // 创建任务对象并保存
-            const task = {
-                text: newText,  // 任务文本
-                remark: newRemark,  // 备注
-                status: "未使用",  // 默认状态为未使用
-                createdAt: Date.now()  // 记录创建时间
-            };
-
-            addTaskToIndexedDB(task);  // 保存任务到IndexedDB
-            taskCount++;  // 增加序号
-            startIndex = matchEnd;  // 更新起始位置，跳过已经处理的部分
-        });
-    } else {
-        // 如果没有找到连续的9位数字，保存为单个任务
-        const task = {
-            text: text,
-            remark: remark,
-            status: "未使用", // 默认状态为未使用
-            createdAt: Date.now() // 记录创建时间
-        };
-        addTaskToIndexedDB(task); // 保存任务
-    }
-	        updateTaskStats(); // 更新任务统计卡片
-
-
-    clearTaskInputs(); // 清空任务输入框
-}
-
-
-        // 清空任务输入框
-        function clearTaskInputs() {
-            document.getElementById("task-text").value = "";
-            document.getElementById("task-remark").value = "";
-        }
-
-               // 编辑任务
-        function editTask(taskId) {
-            const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
-            
-            for (let row of taskRows) {
-                const taskIdInRow = row.querySelector("button").onclick.toString().match(/\d+/)[0];
-                if (parseInt(taskIdInRow) === taskId) {
-                    const textInput = row.querySelector(".task-text");
-                    const remarkInput = row.querySelector(".task-remark");
-
-                    textInput.disabled = false;
-                    remarkInput.disabled = false;
-                    row.querySelector(".save-button").style.display = "inline-block";
-                    row.querySelector(".cancel-button").style.display = "inline-block";
-                    row.querySelector(".edit-button").style.display = "none";
-                }
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get('pid');
+        if (pid) {
+            const inputField = document.getElementById('search');
+            if (inputField) {
+                inputField.value = pid;
             }
-
-            currentEditingTaskId = taskId;
+            console.log('Pid from URL:', pid);
+            searchTasks(pid, true);
         }
+    };
 
-        // 保存编辑后的任务
-        function saveTaskEdit(taskId) {
-            const transaction = db.transaction([storeName], "readwrite");
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        const objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+        objectStore.createIndex("status", "status", { unique: false });
+        objectStore.createIndex("createdAt", "createdAt", { unique: false });
+        console.log("对象存储空间创建成功");
+    };
+
+    function updateTaskStats() {
+        const transaction = db.transaction([storeName], "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onsuccess = function(event) {
+            const tasks = event.target.result;
+            const total = tasks.length;
+            const incomplete = tasks.filter(task => task.status === '未使用').length;
+            const completed = tasks.filter(task => task.status === '已完成').length;
+            const expired = tasks.filter(task => task.status === '已失效').length;
+
+            document.getElementById('total-tasks').textContent = total;
+            document.getElementById('incomplete-tasks').textContent = incomplete;
+            document.getElementById('completed-tasks').textContent = completed;
+            document.getElementById('expired-tasks').textContent = expired;
+        };
+    }
+
+    function filterByStatus(status) {
+        const transaction = db.transaction([storeName], "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onsuccess = function(event) {
+            const tasks = event.target.result;
+            let filteredTasks = status ? tasks.filter(task => task.status === status) : tasks;
+            filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
+            displayTasks(filteredTasks);
+        };
+    }
+
+    window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get('pid');
+        if (pid) {
+            const inputField = document.getElementById('search');
+            if (inputField) inputField.value = pid;
+            console.log('Pid from URL:', pid);
+            searchTasks(pid, true);
+        }
+    };
+
+    function executeQuery(taskText) {
+        const regex = /(\d{9})/g;
+        const matches = [...taskText.matchAll(regex)];
+        let resultText = "";
+        if (matches.length > 0) {
+            resultText = matches[0][0];
+        } else {
+            const digits = taskText.match(/\d/g);
+            if (digits) resultText = digits.join('').slice(0, 9);
+        }
+        window.location.href = `https://booksreaders1.github.io/?pid=${resultText}`;
+    }
+
+    function addTaskToIndexedDB(task) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.add(task);
+
+        request.onsuccess = function() {
+            console.log("任务添加成功");
+            loadTasksFromIndexedDB();
+            clearTaskInputs();
+        };
+        request.onerror = function(event) {
+            console.log("任务添加失败", event);
+        };
+    }
+
+    function loadTasksFromIndexedDB() {
+        return new Promise((resolve) => {
+            const transaction = db.transaction([storeName], "readonly");
             const store = transaction.objectStore(storeName);
-            const request = store.get(taskId);
+            const request = store.getAll();
 
             request.onsuccess = function(event) {
-                const task = event.target.result;
-                const taskRows = document.getElementById("task-list").getElementsByTagName('tbody')[0].children;
+                const tasks = event.target.result;
+                tasks.sort((a, b) => b.createdAt - a.createdAt);
+                const hasMatch = displayTasks(tasks);
+                updateTaskStats();
+                resolve(hasMatch);
+            };
+        });
+    }
 
-                for (let row of taskRows) {
-                    if (row.querySelector("button").onclick.toString().match(/\d+/)[0] == taskId) {
-                        const newText = row.querySelector(".task-text").value;
-                        const newRemark = row.querySelector(".task-remark").value;
+    function cancelInvalidateTask(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
 
-                        task.text = newText;
-                        task.remark = newRemark;
+        request.onsuccess = function(event) {
+            const task = event.target.result;
+            task.status = "未使用";
+            const updateRequest = store.put(task);
+            updateRequest.onsuccess = function() {
+                console.log("任务状态更新为未使用");
+                updateTaskStats();
+                loadTasksFromIndexedDB();
+            };
+        };
+    }
 
-                        store.put(task).onsuccess = function() {
-                            console.log("任务编辑成功");
-                            loadTasksFromIndexedDB();  // 重新加载任务
-                        };
+    function displayTasks(tasks) {
+        const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
+        taskList.innerHTML = "";
+        const searchTerm = document.getElementById("search").value.toLowerCase();
+        const filteredTasks = tasks.filter(task =>
+            task.text.toLowerCase().includes(searchTerm) ||
+            task.remark.toLowerCase().includes(searchTerm)
+        );
+
+        filteredTasks.forEach(task => {
+            const escapedText = task.text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const escapedRemark = task.remark.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+            const statusClass =
+                task.status === "已完成" ? "completed" :
+                task.status === "已失效" ? "expired" : "incomplete";
+
+            const taskRow = document.createElement("tr");
+            taskRow.className = statusClass;
+
+            taskRow.innerHTML = `
+                <td><input type="text" class="task-text" value="${escapedText}" disabled /></td>
+                <td><input type="text" class="task-remark" value="${escapedRemark}" disabled /></td>
+                <td><span>${task.status}</span></td>
+                <td>
+                    <button class="unified-button btn-edit" onclick="editTask(${task.id})">✏️ 编辑</button>
+                    <button class="unified-button btn-save" style="display: none;" onclick="saveTaskEdit(${task.id})">💾 保存</button>
+                    <button class="unified-button btn-cancel" style="display: none;" onclick="cancelEdit(${task.id})">❌ 取消</button>
+                    <button class="unified-button btn-delete" onclick="deleteTask(${task.id})">🗑️ 删除</button>
+                    ${task.status === "未使用"
+                        ? `
+                            <button class="unified-button btn-invalidate" onclick="invalidateTask(${task.id})">⏳ 失效</button>
+                            <button class="unified-button btn-complete" onclick="completeTask(${task.id})">✅ 完成</button>
+                          `
+                        : task.status === "已完成"
+                        ? `<button class="unified-button btn-restore" onclick="cancelCompleteTask(${task.id})">↩️ 取消完成</button>`
+                        : task.status === "已失效"
+                        ? `<button class="unified-button btn-restore" onclick="cancelInvalidateTask(${task.id})">↩️ 取消失效</button>`
+                        : ""
                     }
-                }
+                    <button class="unified-button btn-smart" onclick="smartJump('${escapedText}')">🤖 智能跳转</button>
+                    <button class="unified-button btn-jm" onclick="jumpToJM('${escapedText}')">📘 跳转到JM</button>
+                    <button class="unified-button btn-p" onclick="jumpToP('${escapedText}')">🖼️ 跳转到P站</button>
+                </td>
+            `;
+            taskList.appendChild(taskRow);
+        });
+
+        return filteredTasks.length > 0;
+    }
+
+    function invalidateTask(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
+        request.onsuccess = function(event) {
+            const task = event.target.result;
+            task.status = "已失效";
+            store.put(task).onsuccess = function() {
+                updateTaskStats();
+                loadTasksFromIndexedDB();
             };
-        }
+        };
+    }
 
-        // 取消编辑
-        function cancelEdit(taskId) {
-            loadTasksFromIndexedDB();
-        }
-
-        // 筛选任务
-        function filterTasks() {
-            loadTasksFromIndexedDB();
-        }
-
-        // 清空筛选条件
-        function clearFilters() {
-            document.getElementById("search").value = "";
-            loadTasksFromIndexedDB();
-        }
-
-function searchTasks(searchTerm, isUrlSearch = false) {
-    loadTasksFromIndexedDB().then(result => {
-        console.log('result', result);
-
-        // 如果是通过 URL 参数传递的 pid，执行自动添加任务操作
-        if (!result && isUrlSearch && searchTerm && searchTerm.trim() !== '') {
-            const task = {
-                text: searchTerm,
-                remark: "跳转自动保存",
-                status: "未使用",
-                createdAt: Date.now()
+    function cancelCompleteTask(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
+        request.onsuccess = function(event) {
+            const task = event.target.result;
+            task.status = "未使用";
+            store.put(task).onsuccess = function() {
+                updateTaskStats();
+                loadTasksFromIndexedDB();
             };
+        };
+    }
+
+    function completeTask(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
+        request.onsuccess = function(event) {
+            const task = event.target.result;
+            task.status = "已完成";
+            store.put(task).onsuccess = function() {
+                updateTaskStats();
+                loadTasksFromIndexedDB();
+            };
+        };
+    }
+
+    function deleteTask(taskId) {
+        if (!confirm("确定要删除此任务吗？该操作无法撤销。")) return;
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(taskId);
+        request.onsuccess = function() {
+            updateTaskStats();
+            loadTasksFromIndexedDB();
+        };
+        request.onerror = function(event) {
+            alert("删除任务时发生错误，请重试。");
+        };
+    }
+
+    async function pasteFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text.trim()) {
+                alert("剪贴板内容为空！");
+                return;
+            }
+            document.getElementById('task-text').value = text;
+            saveTask();
+        } catch (err) {
+            alert('无法读取剪贴板内容。\n请确保页面在安全上下文（如 HTTPS 或 localhost）中运行。');
+        }
+    }
+
+    function saveTask() {
+        const text = document.getElementById("task-text").value;
+        const remark = document.getElementById("task-remark").value;
+        if (text.trim() === "") {
+            alert("任务文本不能为空！");
+            return;
+        }
+
+        const regex = /(\d{9})/g;
+        const matches = [...text.matchAll(regex)];
+
+        if (matches.length > 0) {
+            let startIndex = 0;
+            let taskCount = 1;
+            matches.forEach((match) => {
+                const matchText = match[0];
+                const matchStart = match.index;
+                const matchEnd = matchStart + matchText.length;
+                const newText = text.slice(startIndex, matchStart) + matchText;
+                const newRemark = remark + taskCount;
+                const task = { text: newText, remark: newRemark, status: "未使用", createdAt: Date.now() };
+                addTaskToIndexedDB(task);
+                taskCount++;
+                startIndex = matchEnd;
+            });
+        } else {
+            const task = { text, remark, status: "未使用", createdAt: Date.now() };
             addTaskToIndexedDB(task);
-            loadTasksFromIndexedDB();  // 重新加载任务列表
         }
-    }).catch(error => {
-        console.error(error);
-    });
-}
+        clearTaskInputs();
+    }
 
-// 提取任务文本中的数字（核心逻辑复用）
-function extractNumber(text) {
-    console.log("原始文本:", text);
-    const regex = /(\d{9})/g;
-    const matches = [...text.matchAll(regex)];
+    function clearTaskInputs() {
+        document.getElementById("task-text").value = "";
+        document.getElementById("task-remark").value = "";
+    }
 
-    let resultText = "";
-    if (matches.length > 0) {
-        resultText = matches[0][0];
-    } else {
+    function editTask(taskId) {
+        const rows = document.querySelectorAll("#task-list tbody tr");
+        rows.forEach(row => {
+            const buttons = row.querySelectorAll("button");
+            let rowTaskId = null;
+            buttons.forEach(btn => {
+                const onClick = btn.getAttribute("onclick");
+                if (onClick && onClick.includes(`(${taskId})`)) {
+                    rowTaskId = taskId;
+                }
+            });
+            if (rowTaskId === taskId) {
+                row.querySelector(".task-text").disabled = false;
+                row.querySelector(".task-remark").disabled = false;
+                row.querySelector(".btn-save").style.display = "inline-block";
+                row.querySelector(".btn-cancel").style.display = "inline-block";
+                row.querySelector(".btn-edit").style.display = "none";
+            }
+        });
+        currentEditingTaskId = taskId;
+    }
+
+    function saveTaskEdit(taskId) {
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(taskId);
+        request.onsuccess = function(event) {
+            const task = event.target.result;
+            const rows = document.querySelectorAll("#task-list tbody tr");
+            rows.forEach(row => {
+                const buttons = row.querySelectorAll("button");
+                let rowTaskId = null;
+                buttons.forEach(btn => {
+                    const onClick = btn.getAttribute("onclick");
+                    if (onClick && onClick.includes(`(${taskId})`)) {
+                        rowTaskId = taskId;
+                    }
+                });
+                if (rowTaskId === taskId) {
+                    task.text = row.querySelector(".task-text").value;
+                    task.remark = row.querySelector(".task-remark").value;
+                    store.put(task).onsuccess = function() {
+                        loadTasksFromIndexedDB();
+                    };
+                }
+            });
+        };
+    }
+
+    function cancelEdit(taskId) {
+        loadTasksFromIndexedDB();
+    }
+
+    function clearFilters() {
+        document.getElementById("search").value = "";
+        loadTasksFromIndexedDB();
+    }
+
+    function searchTasks(searchTerm, isUrlSearch = false) {
+        const term = searchTerm || document.getElementById("search").value;
+        loadTasksFromIndexedDB().then(hasResult => {
+            if (!hasResult && isUrlSearch && term.trim()) {
+                const task = {
+                    text: term,
+                    remark: "跳转自动保存",
+                    status: "未使用",
+                    createdAt: Date.now()
+                };
+                addTaskToIndexedDB(task);
+            }
+        });
+    }
+
+    function extractNumber(text) {
+        const regex = /(\d{9})/g;
+        const matches = [...text.matchAll(regex)];
+        if (matches.length > 0) return matches[0][0];
         const digits = text.match(/\d/g);
-        if (digits) {
-            resultText = digits.join('').slice(0, 9);
+        return digits ? digits.join('').slice(0, 9) : "";
+    }
+
+    function smartJump(taskText) {
+        const num = extractNumber(taskText);
+        if (!num) { alert("未找到有效数字！"); return; }
+        const len = num.length;
+        let url = '';
+        if (len >= 5 && len <= 8) {
+            url = `https://jm18c-uoi.net/album/${num}/`;
+        } else if (len >= 9) {
+            url = `https://booksreaders1.github.io/?pid=${num}`;
+        } else {
+            alert("数字位数不符合跳转规则（需5位及以上）");
+            return;
         }
+        window.open(url, '_blank');
     }
-    console.log("提取的数字:", resultText);
-    return resultText;
-}
 
-
-// 智能跳转：5~8位 → JM，≥9 → P站（新页面打开）
-function smartJump(taskText) {
-    const num = extractNumber(taskText);
-    if (!num) {
-        alert("未找到有效数字！");
-        return;
+    function jumpToJM(taskText) {
+        const num = extractNumber(taskText);
+        if (!num) { alert("未找到有效数字！"); return; }
+        window.open(`https://jm18c-uoi.net/album/${num}/`, '_blank');
     }
-    const len = num.length;
-    let url = '';
-    if (len >= 5 && len <= 8) {
-        url = `https://jm18c-uoi.net/album/${num}/`;
-    } else if (len >= 9) {
-        url = `https://booksreaders1.github.io/?pid=${num}`;
-    } else {
-        alert("数字位数不符合跳转规则（需5位及以上）");
-        return;
+
+    function jumpToP(taskText) {
+        const num = extractNumber(taskText);
+        if (!num) { alert("未找到有效数字！"); return; }
+        window.open(`https://booksreaders1.github.io/?pid=${num}`, '_blank');
     }
-    window.open(url, '_blank');
-}
-
-// 跳转到 JM（新页面打开）
-function jumpToJM(taskText) {
-    const num = extractNumber(taskText);
-    if (!num) {
-        alert("未找到有效数字！");
-        return;
-    }
-    const url = `https://jm18c-uoi.net/album/${num}/`;
-    window.open(url, '_blank');
-}
-
-// 跳转到 P站（新页面打开）
-function jumpToP(taskText) {
-    const num = extractNumber(taskText);
-    if (!num) {
-        alert("未找到有效数字！");
-        return;
-    }
-    const url = `https://booksreaders1.github.io/?pid=${num}`;
-    window.open(url, '_blank');
-}
-
-
-
 </script>
-
 
 </body>
 </html>
