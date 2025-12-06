@@ -489,19 +489,28 @@ function cancelCompleteTask(taskId) {
             };
         }
 
-        // 删除任务
-        function deleteTask(taskId) {
-            const transaction = db.transaction([storeName], "readwrite");
-            const store = transaction.objectStore(storeName);
-            const request = store.delete(taskId);
+// 删除任务（带二次确认）
+function deleteTask(taskId) {
+    const confirmed = confirm("确定要删除此任务吗？该操作无法撤销。");
+    if (!confirmed) {
+        return; // 用户取消，不执行删除
+    }
 
-            request.onsuccess = function() {
-                console.log("任务删除成功");
-				        updateTaskStats(); // 更新任务统计卡片
+    const transaction = db.transaction([storeName], "readwrite");
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(taskId);
 
-                loadTasksFromIndexedDB(); // 更新任务列表
-            };
-        }
+    request.onsuccess = function() {
+        console.log("任务删除成功");
+        updateTaskStats(); // 更新任务统计卡片
+        loadTasksFromIndexedDB(); // 重新加载任务列表
+    };
+
+    request.onerror = function(event) {
+        console.error("任务删除失败", event);
+        alert("删除任务时发生错误，请重试。");
+    };
+}
 
 // 从剪贴板粘贴文本到任务输入框，并自动保存
 async function pasteFromClipboard() {
