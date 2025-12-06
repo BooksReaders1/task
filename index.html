@@ -139,7 +139,24 @@
             .stats-card h3 { font-size: 0.85em; margin: 3px 0; }
             .stats-card span { font-size: 1em; }
             input[type="text"] { width: 100%; margin: 4px 0; }
-            div > .unified-button { margin: 2px 4px; }
+
+            /* 👇 关键：缩小操作按钮 */
+            .unified-button {
+                padding: 4px 6px !important;    /* 减小内边距 */
+                margin: 2px 3px !important;     /* 减小外边距 */
+                font-size: 12px !important;     /* 字体缩小 */
+                min-height: auto !important;
+                line-height: 1 !important;
+            }
+
+            /* 进一步缩小超小屏（如 iPhone SE） */
+            @media (max-width: 400px) {
+                .unified-button {
+                    font-size: 11px !important;
+                    padding: 3px 5px !important;
+                    margin: 1px 2px !important;
+                }
+            }
         }
     </style>
 </head>
