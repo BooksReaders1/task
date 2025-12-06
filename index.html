@@ -23,7 +23,7 @@
             transition: background-color 0.2s, transform 0.1s;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             display: inline-block;
-            white-space: nowrap; /* 👈 防止按钮内换行 */
+            white-space: nowrap;
         }
 
         .unified-button:hover {
@@ -122,7 +122,6 @@
             min-height: 40px;
         }
 
-        /* 操作列限制两行 */
         .action-buttons {
             display: flex;
             flex-wrap: wrap;
@@ -132,30 +131,24 @@
             padding: 2px 0;
         }
 
-        /* 移动端优化 */
         @media (max-width: 600px) {
             body { padding: 10px; }
             h1 { font-size: 1.5em; }
             .stats-card h3 { font-size: 0.85em; margin: 3px 0; }
             .stats-card span { font-size: 1em; }
             input[type="text"] { width: 100%; margin: 4px 0; }
-
-            /* 👇 关键：缩小操作按钮 */
             .unified-button {
-                padding: 4px 6px !important;    /* 减小内边距 */
-                margin: 2px 3px !important;     /* 减小外边距 */
-                font-size: 12px !important;     /* 字体缩小 */
-                min-height: auto !important;
-                line-height: 1 !important;
+                padding: 4px 6px !important;
+                margin: 2px 3px !important;
+                font-size: 12px !important;
             }
+        }
 
-            /* 进一步缩小超小屏（如 iPhone SE） */
-            @media (max-width: 400px) {
-                .unified-button {
-                    font-size: 11px !important;
-                    padding: 3px 5px !important;
-                    margin: 1px 2px !important;
-                }
+        @media (max-width: 400px) {
+            .unified-button {
+                padding: 3px 5px !important;
+                margin: 1px 2px !important;
+                font-size: 11px !important;
             }
         }
     </style>
@@ -223,17 +216,19 @@
     const storeName = "tasks";
     let currentEditingRow = null;
 
+    // ✅ 全局配置缓存（关键！）
+    let gJMTemplate = "https://jm18c-uoi.net/album/";
+    let gPreviewApiTemplate = "https://cdn-msp.jm18c-uoi.net/media/albums/";
+
     const request = indexedDB.open(dbName, 4);
 
     request.onerror = e => console.error("数据库打开失败", e);
     request.onsuccess = e => {
         db = e.target.result;
+        // ✅ 启动时加载配置
+        loadGlobalConfigs();
         loadTasksFromIndexedDB();
-<!--        const pid = new URLSearchParams(window.location.search).get('pid');-->
-<!--        if (pid) {-->
-<!--            document.getElementById('search').value = pid;-->
-<!--            searchTasks(pid, true);-->
-<!--        }-->
+        // ⚠️ 不再处理 URL 参数
     };
 
     request.onupgradeneeded = e => {
@@ -249,53 +244,90 @@
         }
     };
 
-    // ========== 配置 ==========
-    function saveJMConfig(url) {
-        if (!url?.trim()) return alert("URL 不能为空");
-        if (!url.match(/\/\d+\/?$/)) return alert("URL 中未找到作品 ID");
-        db.transaction(["configs"], "readwrite").objectStore("configs").put({ id: "jmUrl", value: url.trim() });
-        alert("JM 跳转配置已保存");
+    // ✅ 加载全局配置
+    async function loadGlobalConfigs() {
+        try {
+            const jmConfig = await getJMConfigFromDB();
+            if (jmConfig) gJMTemplate = jmConfig;
+
+            const previewConfig = await getPreviewApiFromDB();
+            if (previewConfig) gPreviewApiTemplate = previewConfig;
+        } catch (e) {
+            console.warn("加载配置失败", e);
+        }
     }
 
-    function resetJMConfigToDefault() {
-        if (!confirm("确定恢复 JM 跳转为默认地址？")) return;
-        db.transaction(["configs"], "readwrite").objectStore("configs").delete("jmUrl");
-        alert("已恢复默认 JM 地址");
-    }
-
-    function savePreviewApiConfig(url) {
-        if (!url?.trim()) return;
-        db.transaction(["configs"], "readwrite").objectStore("configs").put({ id: "previewApiTemplate", value: url.trim() });
-    }
-
-    async function getJMConfig() {
+    // 仅用于启动加载（内部用）
+    function getJMConfigFromDB() {
         return new Promise(r => {
             const req = db.transaction(["configs"], "readonly").objectStore("configs").get("jmUrl");
             req.onsuccess = () => r(req.result?.value || null);
         });
     }
 
-    async function getPreviewApiTemplate() {
+    function getPreviewApiFromDB() {
         return new Promise(r => {
             const req = db.transaction(["configs"], "readonly").objectStore("configs").get("previewApiTemplate");
-            req.onsuccess = () => r(req.result?.value || "https://cdn-msp.jm18c-uoi.net/media/albums/");
+            req.onsuccess = () => r(req.result?.value || null);
         });
+    }
+
+    // ========== 配置管理（更新全局变量）==========
+    function saveJMConfig(url) {
+        if (!url?.trim()) return alert("URL 不能为空");
+        if (!url.match(/\/\d+\/?$/)) return alert("URL 中未找到作品 ID");
+        db.transaction(["configs"], "readwrite").objectStore("configs").put({ id: "jmUrl", value: url.trim() });
+        gJMTemplate = url.trim(); // ✅ 同步更新全局变量
+        alert("JM 跳转配置已保存");
+    }
+
+    function resetJMConfigToDefault() {
+        if (!confirm("确定恢复 JM 跳转为默认地址？")) return;
+        db.transaction(["configs"], "readwrite").objectStore("configs").delete("jmUrl");
+        gJMTemplate = "https://jm18c-uoi.net/album/"; // ✅ 重置全局变量
+        alert("已恢复默认 JM 地址");
+    }
+
+    function savePreviewApiConfig(url) {
+        if (!url?.trim()) return;
+        db.transaction(["configs"], "readwrite").objectStore("configs").put({ id: "previewApiTemplate", value: url.trim() });
+        gPreviewApiTemplate = url.trim();
+    }
+
+    function resetPreviewApiToDefault() {
+        if (!confirm("确定要恢复预览图 API 为默认值吗？\n默认地址：https://cdn-msp.jm18c-uoi.net/media/albums/")) {
+            return;
+        }
+        const txConfig = db.transaction(["configs"], "readwrite");
+        txConfig.objectStore("configs").delete("previewApiTemplate");
+        gPreviewApiTemplate = "https://cdn-msp.jm18c-uoi.net/media/albums/"; // ✅ 重置
+        const txTasks = db.transaction([storeName], "readwrite");
+        const store = txTasks.objectStore(storeName);
+        const req = store.openCursor();
+        req.onsuccess = function(event) {
+            const cursor = event.target.result;
+            if (cursor) {
+                const task = cursor.value;
+                if (task.previewUrl) {
+                    delete task.previewUrl;
+                    cursor.update(task);
+                }
+                cursor.continue();
+            } else {
+                alert("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！");
+                loadTasksFromIndexedDB();
+            }
+        };
     }
 
     function openJMConfig() {
         const choice = prompt("配置类型：\n1. JM 跳转地址\n2. 预览图 API\n输入 1 或 2：", "1");
         if (choice === "1") {
-            getJMConfig().then(current => {
-                const ex = "https://jm18c-uoi.net/album/1201936/";
-                const input = prompt("JM 作品链接：", current || ex);
-                if (input !== null) saveJMConfig(input);
-            });
+            const input = prompt("JM 作品链接：", gJMTemplate);
+            if (input !== null) saveJMConfig(input);
         } else if (choice === "2") {
-            getPreviewApiTemplate().then(current => {
-                const ex = "https://cdn-msp.jm18c-uoi.net/media/albums/";
-                const input = prompt("预览图 API 地址：", current || ex);
-                if (input !== null) savePreviewApiConfig(input);
-            });
+            const input = prompt("预览图 API 地址：", gPreviewApiTemplate);
+            if (input !== null) savePreviewApiConfig(input);
         }
     }
 
@@ -307,17 +339,17 @@
         return d ? d.join('').slice(0, 9) : "";
     }
 
-    async function generatePreviewUrl(taskText) {
+    // ✅ 使用全局变量，同步生成
+    function generatePreviewUrl(taskText) {
         const num = extractNumber(taskText);
         if (!num || num.length < 5) return null;
-        const api = await getPreviewApiTemplate();
-        const base = api.endsWith('/') ? api : api + '/';
+        const base = gPreviewApiTemplate.endsWith('/') ? gPreviewApiTemplate : gPreviewApiTemplate + '/';
         return `${base}${num}.jpg?u=${Date.now()}`;
     }
 
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
-        const previewUrl = await generatePreviewUrl(task.text);
+        const previewUrl = generatePreviewUrl(task.text); // 同步
         if (previewUrl) task.previewUrl = previewUrl;
         const tx = db.transaction([storeName], "readwrite");
         tx.objectStore(storeName).add(task).onsuccess = () => {
@@ -374,7 +406,7 @@
         const task = await new Promise(r => req.onsuccess = () => r(req.result));
         let url = task.previewUrl;
         if (!url) {
-            url = await generatePreviewUrl(task.text);
+            url = generatePreviewUrl(task.text); // 同步
             if (url) {
                 task.previewUrl = url;
                 updateTaskInDB(taskId, { previewUrl: url });
@@ -399,62 +431,49 @@
         document.body.appendChild(modal);
     }
 
-    // ========== 跳转 ==========
-    async function jumpToJM(taskText) {
+    // ========== ✅ 同步跳转函数 ==========
+    function jumpToJM(taskText) {
         const num = extractNumber(taskText);
         if (!num) return alert("未找到有效数字");
-
-        // 👇 关键：立即打开空白窗口（同步！）
-        const win = window.open('', '_blank');
-        if (!win) return alert("请允许弹出窗口");
-
-        try {
-            const templateUrl = await getJMConfig();
-            let url;
-            if (templateUrl) {
-                const base = templateUrl.replace(/\/\d+\/?$/, '/');
-                url = `${base}${num}/`;
+        const base = gJMTemplate.replace(/\/\d+\/?$/, '/');
+        const url = `${base}${num}/`;
+        const win = window.open(url, '_blank');
+        if (!win) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert("✅ 链接已复制！请手动打开");
+                });
             } else {
-                url = `https://jm18c-uoi.net/album/${num}/`;
+                alert("弹出窗口被拦截，请手动打开链接");
             }
-            // 异步设置真实 URL
-            win.location = url;
-        } catch (err) {
-            win.close();
-            alert("跳转失败，请重试");
         }
     }
 
-    async function smartJump(taskText) {
+    function smartJump(taskText) {
         const num = extractNumber(taskText);
         if (!num) return alert("未找到有效数字");
         const len = num.length;
-
         if (len >= 5 && len <= 8) {
-            // 👇 立即打开窗口
-            const win = window.open('', '_blank');
-            if (!win) return alert("请允许弹出窗口");
-
-            try {
-                const templateUrl = await getJMConfig();
-                let url;
-                if (templateUrl) {
-                    const base = templateUrl.replace(/\/\d+\/?$/, '/');
-                    url = `${base}${num}/`;
-                } else {
-                    url = `https://jm18c-uoi.net/album/${num}/`;
+            const base = gJMTemplate.replace(/\/\d+\/?$/, '/');
+            const url = `${base}${num}/`;
+            const win = window.open(url, '_blank');
+            if (!win) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        alert("✅ JM链接已复制！请手动打开");
+                    });
                 }
-                win.location = url;
-            } catch (err) {
-                win.close();
-                alert("跳转失败");
             }
         } else if (len >= 9) {
-            // P 站逻辑（同样建议修复，但你主要问 JM）
-            const win = window.open('', '_blank');
-            if (!win) return alert("请允许弹出窗口");
-            win.location = `https://booksreaders1.github.io/`;
-            // 可选：复制 ID 到剪贴板（之前逻辑）
+            // P站：跳转到主页（因不支持URL参数）
+            const win = window.open('https://booksreaders1.github.io/', '_blank');
+            if (!win) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(num).then(() => {
+                        alert("✅ 作品ID已复制！请在P站查询页粘贴");
+                    });
+                }
+            }
         } else {
             alert("数字位数不符合跳转规则（需5位及以上）");
         }
@@ -463,7 +482,14 @@
     function jumpToP(taskText) {
         const num = extractNumber(taskText);
         if (!num) return alert("未找到有效数字");
-        window.open(`https://booksreaders1.github.io/?pid=${num}`, '_blank');
+        const win = window.open('https://booksreaders1.github.io/', '_blank');
+        if (!win) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(num).then(() => {
+                    alert("✅ 作品ID已复制！请在P站查询页粘贴");
+                });
+            }
+        }
     }
 
     // ========== UI ==========
@@ -522,7 +548,7 @@
         });
     }
 
-    // ========== 任务操作 ==========
+    // ========== 任务操作（略）==========
     function deleteTask(id) {
         if (!confirm("确定删除？")) return;
         db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = loadTasksFromIndexedDB;
@@ -594,7 +620,7 @@
         if (!currentEditingRow) return;
         const newText = currentEditingRow.querySelector(".task-text").value;
         const newRemark = currentEditingRow.querySelector(".task-remark").value;
-        const previewUrl = await generatePreviewUrl(newText);
+        const previewUrl = generatePreviewUrl(newText); // 同步
         const tx = db.transaction([storeName], "readwrite");
         const req = tx.objectStore(storeName).get(taskId);
         req.onsuccess = () => {
@@ -621,12 +647,9 @@
         loadTasksFromIndexedDB();
     }
 
-    async function searchTasks(term, isUrl = false) {
-        const t = term || document.getElementById("search").value;
-        const has = await loadTasksFromIndexedDB();
-        if (!has && isUrl && t.trim()) {
-            addTaskToIndexedDB({ text: t, remark: "跳转自动保存", status: "未使用", createdAt: Date.now() });
-        }
+    // ✅ 简化搜索：不再支持 isUrlSearch
+    function searchTasks() {
+        loadTasksFromIndexedDB();
     }
 
     function filterByStatus(status) {
@@ -662,42 +685,7 @@
         }
     }
 
-    function resetPreviewApiToDefault() {
-        if (!confirm("确定要恢复预览图 API 为默认值吗？\n默认地址：https://cdn-msp.jm18c-uoi.net/media/albums/")) {
-            return;
-        }
-        const txConfig = db.transaction(["configs"], "readwrite");
-        txConfig.objectStore("configs").delete("previewApiTemplate");
-        const txTasks = db.transaction([storeName], "readwrite");
-        const store = txTasks.objectStore(storeName);
-        const req = store.openCursor();
-        req.onsuccess = function(event) {
-            const cursor = event.target.result;
-            if (cursor) {
-                const task = cursor.value;
-                if (task.previewUrl) {
-                    delete task.previewUrl;
-                    cursor.update(task);
-                }
-                cursor.continue();
-            } else {
-                alert("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！");
-                loadTasksFromIndexedDB();
-            }
-        };
-        req.onerror = function(event) {
-            console.error("清空 previewUrl 失败", event);
-            alert("重置成功，但清空缓存失败，请手动刷新页面。");
-        };
-    }
-
-<!--    window.onload = () => {-->
-<!--        const pid = new URLSearchParams(window.location.search).get('pid');-->
-<!--        if (pid) {-->
-<!--            document.getElementById('search').value = pid;-->
-<!--            searchTasks(pid, true);-->
-<!--        }-->
-<!--    };-->
+    // window.onload 不再处理 URL 参数
 </script>
 
 </body>
