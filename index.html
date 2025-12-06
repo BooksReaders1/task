@@ -114,63 +114,64 @@ input[type="text"].task-remark {
     resize: vertical; /* 允许垂直调整大小 */
 }
 
+
     </style>
 </head>
 <body>
 
-    <h1>任务管理</h1>
-    
-    <!-- 新任务输入框 -->
-    <div>
-        <input type="text" id="task-text" placeholder="输入任务" />
-        <input type="text" id="task-remark" placeholder="输入备注" />
-        <button onclick="saveTask()">保存任务</button>
+<h1>任务管理</h1>
+
+<!-- 新任务输入框 -->
+<div>
+    <input type="text" id="task-text" placeholder="输入任务"/>
+    <input type="text" id="task-remark" placeholder="输入备注"/>
+    <button onclick="saveTask()">保存任务</button>
+</div>
+
+<!-- 筛选部分 -->
+<div class="filter-section">
+    <div class="filter-title">条件筛选</div>
+    <input type="text" id="search" placeholder="搜索任务..." oninput="searchTasks()"/>
+    <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
+</div>
+
+<!-- 统计卡片 -->
+<div class="stats-cards">
+    <div class="stats-card all" onclick="filterByStatus('')">
+        <h3>全部任务</h3>
+        <span id="total-tasks">0</span>
     </div>
-
-    <!-- 筛选部分 -->
-    <div class="filter-section">
-        <div class="filter-title">条件筛选</div>
-        <input type="text" id="search" placeholder="搜索任务..." oninput="searchTasks()" />
-        <button onclick="clearFilters()">清空条件</button> <!-- 新增清空条件按钮 -->
+    <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
+        <h3>未完成</h3>
+        <span id="incomplete-tasks">0</span>
     </div>
-	
-	<!-- 统计卡片 -->
-	<div class="stats-cards">
-	    <div class="stats-card all" onclick="filterByStatus('')">
-	        <h3>全部任务</h3>
-	        <span id="total-tasks">0</span>
-	    </div>
-	    <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
-	        <h3>未完成</h3>
-	        <span id="incomplete-tasks">0</span>
-	    </div>
-	    <div class="stats-card completed" onclick="filterByStatus('已完成')">
-	        <h3>已完成</h3>
-	        <span id="completed-tasks">0</span>
-	    </div>
-	    <div class="stats-card expired" onclick="filterByStatus('已失效')">
-	        <h3>已失效</h3>
-	        <span id="expired-tasks">0</span>
-	    </div>
-	</div>
+    <div class="stats-card completed" onclick="filterByStatus('已完成')">
+        <h3>已完成</h3>
+        <span id="completed-tasks">0</span>
+    </div>
+    <div class="stats-card expired" onclick="filterByStatus('已失效')">
+        <h3>已失效</h3>
+        <span id="expired-tasks">0</span>
+    </div>
+</div>
 
 
-    <h2>任务列表</h2>
-    <table class="task-table" id="task-list">
-        <thead>
-            <tr>
-                <th>任务文本</th>
-                <th>备注</th>
-                <th>状态</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- 动态任务列表 -->
-        </tbody>
-    </table>
+<h2>任务列表</h2>
+<table class="task-table" id="task-list">
+    <thead>
+    <tr>
+        <th>任务文本</th>
+        <th>备注</th>
+        <th>状态</th>
+        <th>操作</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- 动态任务列表 -->
+    </tbody>
+</table>
 
-    <script>
+<script>
         let db;
         const dbName = "taskDB";  // 数据库名称
         const storeName = "tasks"; // 存储任务的对象存储空间名称
@@ -644,7 +645,8 @@ function searchTasks(searchTerm, isUrlSearch = false) {
 }
 
 
-    </script>
+
+</script>
 
 
 </body>
