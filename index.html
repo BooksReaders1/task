@@ -412,7 +412,12 @@ function cancelInvalidateTask(taskId) {
             ? `<button class="invalidate-button" onclick="cancelInvalidateTask(${task.id})">取消失效</button>`
             : ""
         }
-<button class="complete-button" onclick="executeQuery('${task.text}')">执行查询</button>
+<button class="smart-button" style="background-color: #ff9800; color: white; margin-right: 5px;"
+        onclick="smartJump('${task.text}')">智能跳转</button>
+<button class="jm-button" style="background-color: #673ab7; color: white; margin-right: 5px;"
+        onclick="jumpToJM('${task.text}')">跳转到JM</button>
+<button class="p-button" style="background-color: #28a745; color: white;"
+        onclick="jumpToP('${task.text}')">跳转到p站</button>
 
             </td>
         `;
@@ -642,6 +647,68 @@ function searchTasks(searchTerm, isUrlSearch = false) {
     }).catch(error => {
         console.error(error);
     });
+}
+
+// 提取任务文本中的数字（核心逻辑复用）
+function extractNumber(text) {
+    console.log("原始文本:", text);
+    const regex = /(\d{9})/g;
+    const matches = [...text.matchAll(regex)];
+
+    let resultText = "";
+    if (matches.length > 0) {
+        resultText = matches[0][0];
+    } else {
+        const digits = text.match(/\d/g);
+        if (digits) {
+            resultText = digits.join('').slice(0, 9);
+        }
+    }
+    console.log("提取的数字:", resultText);
+    return resultText;
+}
+
+
+// 智能跳转：5~8位 → JM，≥9 → P站（新页面打开）
+function smartJump(taskText) {
+    const num = extractNumber(taskText);
+    if (!num) {
+        alert("未找到有效数字！");
+        return;
+    }
+    const len = num.length;
+    let url = '';
+    if (len >= 5 && len <= 8) {
+        url = `https://jm18c-uoi.net/album/${num}/`;
+    } else if (len >= 9) {
+        url = `https://booksreaders1.github.io/?pid=${num}`;
+    } else {
+        alert("数字位数不符合跳转规则（需5位及以上）");
+        return;
+    }
+    window.open(url, '_blank');
+}
+
+// 跳转到 JM（新页面打开）
+function jumpToJM(taskText) {
+    const num = extractNumber(taskText);
+    if (!num) {
+        alert("未找到有效数字！");
+        return;
+    }
+    const url = `https://jm18c-uoi.net/album/${num}/`;
+    window.open(url, '_blank');
+}
+
+// 跳转到 P站（新页面打开）
+function jumpToP(taskText) {
+    const num = extractNumber(taskText);
+    if (!num) {
+        alert("未找到有效数字！");
+        return;
+    }
+    const url = `https://booksreaders1.github.io/?pid=${num}`;
+    window.open(url, '_blank');
 }
 
 
