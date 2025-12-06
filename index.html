@@ -35,7 +35,7 @@
         }
 
         /* 按钮语义化颜色 */
-        .btn-edit       { background-color: #FF9800; color: white; }   /* 橙黄 - 编辑（专属） */
+        .btn-edit       { background-color: #FF9800; color: white; }   /* 橙黄 - 编辑 */
         .btn-save       { background-color: #28a745; color: white; }   /* 绿 - 保存 */
         .btn-cancel     { background-color: #ffc107; color: black; }   /* 黄 - 取消 */
         .btn-delete     { background-color: #dc3545; color: white; }   /* 红 - 删除 */
@@ -55,13 +55,14 @@
             display: flex;
             flex-wrap: nowrap;
             gap: 10px;
-            justify-content: space-between;
+            overflow-x: auto;
+            padding: 10px 0;
             margin: 20px 0;
-            -webkit-overflow-scrolling: touch; /* 提升移动端滚动体验 */
+            -webkit-overflow-scrolling: touch;
         }
 
         .stats-card {
-            flex: 1 1 calc(25% - 10px);
+            flex: 0 0 calc(20% - 8px);
             padding: 15px;
             border-radius: 8px;
             color: white;
@@ -69,6 +70,7 @@
             cursor: pointer;
             box-sizing: border-box;
             min-width: 0;
+            white-space: nowrap;
             transition: transform 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -78,10 +80,10 @@
         }
 
         .stats-card.all      { background-color: #007bff; }
+        .stats-card.favorite { background-color: #e91e63; }
         .stats-card.incomplete { background-color: #dc3545; }
         .stats-card.completed  { background-color: #28a745; }
         .stats-card.expired    { background-color: #6c757d; }
-        .stats-card.favorite   { background-color: #e91e63; } /* 新增喜欢卡片 */
 
         .task-table {
             width: 100%;
@@ -107,9 +109,8 @@
         .task-table .completed { background-color: #d4edda; }
         .task-table .incomplete { background-color: #f8d7da; }
         .task-table .expired { background-color: #e2e3e5; }
-        .task-table .favorite {
-            background-color: #e3f2fd; /* 浅蓝色，高可辨识度 */
-        }
+        .task-table .favorite { background-color: #e3f2fd; } /* 浅蓝：喜欢高优先级 */
+
         input[type="text"].task-text,
         input[type="text"].task-remark {
             width: 100%;
@@ -139,6 +140,10 @@
     <input type="text" id="task-remark" placeholder="输入备注"/>
     <button class="unified-button btn-save-new" onclick="saveTask()">✅ 保存任务</button>
     <button class="unified-button btn-paste" onclick="pasteFromClipboard()">📋 粘贴</button>
+    <button class="unified-button" style="background-color:#9c27b0; color:white;" onclick="openJMConfig()">⚙️ 配置 JM 地址</button>
+    <button class="unified-button" style="background-color:#607d8b; color:white;" onclick="resetJMConfigToDefault()">
+        🔄 恢复默认 JM 地址
+    </button>
 </div>
 
 <!-- 筛选部分 -->
@@ -190,9 +195,9 @@
     let db;
     const dbName = "taskDB";
     const storeName = "tasks";
-    let currentEditingTaskId = null;
 
-    const request = indexedDB.open(dbName, 2); // ⚠️ 注意：版本号升级到 2
+    // 打开数据库，版本 3（支持 configs）
+    const request = indexedDB.open(dbName, 3);
 
     request.onerror = function(event) {
         console.error("数据库打开失败", event);
@@ -215,63 +220,92 @@
 
     request.onupgradeneeded = function(event) {
         db = event.target.result;
-        let objectStore;
+        // tasks 表
         if (!db.objectStoreNames.contains(storeName)) {
-            objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
-        } else {
-            objectStore = event.target.transaction.objectStore(storeName);
+            const taskStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+            taskStore.createIndex("status", "status", { unique: false });
+            taskStore.createIndex("createdAt", "createdAt", { unique: false });
+            taskStore.createIndex("favorite", "favorite", { unique: false });
         }
-        // 确保索引存在
-        if (!objectStore.indexNames.contains("status")) {
-            objectStore.createIndex("status", "status", { unique: false });
+        // configs 表
+        if (!db.objectStoreNames.contains("configs")) {
+            db.createObjectStore("configs", { keyPath: "id" });
         }
-        if (!objectStore.indexNames.contains("createdAt")) {
-            objectStore.createIndex("createdAt", "createdAt", { unique: false });
-        }
-        if (!objectStore.indexNames.contains("favorite")) {
-            objectStore.createIndex("favorite", "favorite", { unique: false });
-        }
-        console.log("对象存储空间和索引已配置");
     };
 
+    // === 配置相关函数 ===
+    function saveJMConfig(templateUrl) {
+        if (!templateUrl || !templateUrl.trim()) {
+            alert("请输入有效的 JM 作品链接（如 https://jm18c-uoi.net/album/123456/）");
+            return;
+        }
+        const match = templateUrl.match(/\/(\d+)\/?$/);
+        if (!match) {
+            alert("链接中未找到有效作品 ID（应包含数字，如 /123456/）");
+            return;
+        }
+        const transaction = db.transaction(["configs"], "readwrite");
+        const store = transaction.objectStore("configs");
+        store.put({ id: "main", jmTemplateUrl: templateUrl.trim() });
+        alert("JM 跳转地址配置已保存！");
+    }
+
+    function getJMConfig() {
+        return new Promise((resolve) => {
+            const transaction = db.transaction(["configs"], "readonly");
+            const store = transaction.objectStore("configs");
+            const req = store.get("main");
+            req.onsuccess = () => resolve(req.result ? req.result.jmTemplateUrl : null);
+        });
+    }
+
+    function openJMConfig() {
+        getJMConfig().then(current => {
+            const example = "https://jm18c-uoi.net/album/1201936/";
+            const input = prompt(
+                "请输入 JM 作品页面的完整 URL（系统会自动提取域名和路径模板）：\n例如：\n" + example,
+                current || example
+            );
+            if (input !== null) {
+                saveJMConfig(input);
+            }
+        });
+    }
+
+    // === 任务统计 ===
     function updateTaskStats() {
         const transaction = db.transaction([storeName], "readonly");
         const store = transaction.objectStore(storeName);
         const request = store.getAll();
-
         request.onsuccess = function(event) {
             const tasks = event.target.result;
             tasks.forEach(task => {
                 if (task.favorite === undefined) task.favorite = false;
             });
-
             const total = tasks.length;
-            const incomplete = tasks.filter(task => task.status === '未使用').length;
-            const completed = tasks.filter(task => task.status === '已完成').length;
-            const expired = tasks.filter(task => task.status === '已失效').length;
-            const favorite = tasks.filter(task => task.favorite).length;
-
+            const incomplete = tasks.filter(t => t.status === '未使用').length;
+            const completed = tasks.filter(t => t.status === '已完成').length;
+            const expired = tasks.filter(t => t.status === '已失效').length;
+            const favorite = tasks.filter(t => t.favorite).length;
             document.getElementById('total-tasks').textContent = total;
+            document.getElementById('favorite-tasks').textContent = favorite;
             document.getElementById('incomplete-tasks').textContent = incomplete;
             document.getElementById('completed-tasks').textContent = completed;
             document.getElementById('expired-tasks').textContent = expired;
-            document.getElementById('favorite-tasks').textContent = favorite;
         };
     }
 
+    // === 筛选函数 ===
     function filterByStatus(status) {
         const transaction = db.transaction([storeName], "readonly");
         const store = transaction.objectStore(storeName);
         const request = store.getAll();
-
         request.onsuccess = function(event) {
             const tasks = event.target.result;
-            tasks.forEach(task => {
-                if (task.favorite === undefined) task.favorite = false;
-            });
-            let filteredTasks = status ? tasks.filter(task => task.status === status) : tasks;
-            filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
-            displayTasks(filteredTasks);
+            tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
+            const filtered = status ? tasks.filter(t => t.status === status) : tasks;
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+            displayTasks(filtered);
         };
     }
 
@@ -279,41 +313,23 @@
         const transaction = db.transaction([storeName], "readonly");
         const store = transaction.objectStore(storeName);
         const request = store.getAll();
-
         request.onsuccess = function(event) {
             const tasks = event.target.result;
-            tasks.forEach(task => {
-                if (task.favorite === undefined) task.favorite = false;
-            });
-            const filtered = tasks.filter(task => task.favorite);
+            tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
+            const filtered = tasks.filter(t => t.favorite);
             filtered.sort((a, b) => b.createdAt - a.createdAt);
             displayTasks(filtered);
         };
     }
 
-    window.onload = function () {
-        const urlParams = new URLSearchParams(window.location.search);
-        const pid = urlParams.get('pid');
-        if (pid) {
-            const inputField = document.getElementById('search');
-            if (inputField) inputField.value = pid;
-            searchTasks(pid, true);
-        }
-    };
-
+    // === 任务操作 ===
     function addTaskToIndexedDB(task) {
-        // 确保新任务有 favorite 字段
         if (task.favorite === undefined) task.favorite = false;
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
-        const request = store.add(task);
-
-        request.onsuccess = function() {
+        store.add(task).onsuccess = () => {
             loadTasksFromIndexedDB();
             clearTaskInputs();
-        };
-        request.onerror = function(event) {
-            console.log("任务添加失败", event);
         };
     }
 
@@ -322,12 +338,9 @@
             const transaction = db.transaction([storeName], "readonly");
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
-
             request.onsuccess = function(event) {
                 const tasks = event.target.result;
-                tasks.forEach(task => {
-                    if (task.favorite === undefined) task.favorite = false;
-                });
+                tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
                 const hasMatch = displayTasks(tasks);
                 updateTaskStats();
@@ -340,65 +353,41 @@
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
         const request = store.get(taskId);
-
-        request.onsuccess = function(event) {
-            const task = event.target.result;
+        request.onsuccess = function() {
+            const task = request.result;
             task.favorite = !task.favorite;
-            store.put(task).onsuccess = function() {
+            store.put(task).onsuccess = () => {
                 updateTaskStats();
                 loadTasksFromIndexedDB();
             };
         };
     }
 
-    // === 以下函数与之前相同，仅 displayTasks 有更新 ===
-
-    function cancelInvalidateTask(taskId) {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(taskId);
-        request.onsuccess = function(event) {
-            const task = event.target.result;
-            task.status = "未使用";
-            store.put(task).onsuccess = function() {
-                updateTaskStats();
-                loadTasksFromIndexedDB();
-            };
-        };
-    }
-
+    // === 显示任务列表 ===
     function displayTasks(tasks) {
-        const taskList = document.getElementById("task-list").getElementsByTagName('tbody')[0];
-        taskList.innerHTML = "";
+        const tbody = document.getElementById("task-list").getElementsByTagName('tbody')[0];
+        tbody.innerHTML = "";
         const searchTerm = document.getElementById("search").value.toLowerCase();
-        const filteredTasks = tasks.filter(task =>
-            task.text.toLowerCase().includes(searchTerm) ||
-            task.remark.toLowerCase().includes(searchTerm)
+        const filtered = tasks.filter(t =>
+            t.text.toLowerCase().includes(searchTerm) ||
+            t.remark.toLowerCase().includes(searchTerm)
         );
 
-        filteredTasks.forEach(task => {
+        filtered.forEach(task => {
             const escapedText = (task.text || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
             const escapedRemark = (task.remark || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
-            const statusClass =
-                task.status === "已完成" ? "completed" :
-                task.status === "已失效" ? "expired" : "incomplete";
-
-            const taskRow = document.createElement("tr");
-            // 设置行样式：喜欢优先级最高
+            const row = document.createElement("tr");
+            // 喜欢优先级最高
             if (task.favorite) {
-                taskRow.classList.add("favorite");
+                row.classList.add("favorite");
             } else {
-                if (task.status === "已完成") {
-                    taskRow.classList.add("completed");
-                } else if (task.status === "已失效") {
-                    taskRow.classList.add("expired");
-                } else {
-                    taskRow.classList.add("incomplete");
-                }
+                if (task.status === "已完成") row.classList.add("completed");
+                else if (task.status === "已失效") row.classList.add("expired");
+                else row.classList.add("incomplete");
             }
 
-            taskRow.innerHTML = `
+            row.innerHTML = `
                 <td><input type="text" class="task-text" value="${escapedText}" disabled /></td>
                 <td><input type="text" class="task-remark" value="${escapedRemark}" disabled /></td>
                 <td>
@@ -413,10 +402,8 @@
                     <button class="unified-button btn-cancel" style="display: none;" onclick="cancelEdit(${task.id})">❌ 取消</button>
                     <button class="unified-button btn-delete" onclick="deleteTask(${task.id})">🗑️ 删除</button>
                     ${task.status === "未使用"
-                        ? `
-                            <button class="unified-button btn-invalidate" onclick="invalidateTask(${task.id})">⏳ 失效</button>
-                            <button class="unified-button btn-complete" onclick="completeTask(${task.id})">✅ 完成</button>
-                          `
+                        ? `<button class="unified-button btn-invalidate" onclick="invalidateTask(${task.id})">⏳ 失效</button>
+                           <button class="unified-button btn-complete" onclick="completeTask(${task.id})">✅ 完成</button>`
                         : task.status === "已完成"
                         ? `<button class="unified-button btn-restore" onclick="cancelCompleteTask(${task.id})">↩️ 取消完成</button>`
                         : task.status === "已失效"
@@ -432,75 +419,62 @@
                     <button class="unified-button btn-p" onclick="jumpToP('${escapedText}')">🖼️ 跳转到P站</button>
                 </td>
             `;
-            taskList.appendChild(taskRow);
+            tbody.appendChild(row);
         });
-
-        return filteredTasks.length > 0;
+        return filtered.length > 0;
     }
 
+    // === 状态变更函数（略，与之前一致）===
     function invalidateTask(taskId) {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(taskId);
-        request.onsuccess = function(event) {
-            const task = event.target.result;
-            task.status = "已失效";
-            store.put(task).onsuccess = function() {
-                updateTaskStats();
-                loadTasksFromIndexedDB();
-            };
+        const tx = db.transaction([storeName], "readwrite");
+        const task = tx.objectStore(storeName).get(taskId);
+        task.onsuccess = e => {
+            const t = e.target.result;
+            t.status = "已失效";
+            tx.objectStore(storeName).put(t).onsuccess = () => loadTasksFromIndexedDB();
         };
     }
 
-    function cancelCompleteTask(taskId) {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(taskId);
-        request.onsuccess = function(event) {
-            const task = event.target.result;
-            task.status = "未使用";
-            store.put(task).onsuccess = function() {
-                updateTaskStats();
-                loadTasksFromIndexedDB();
-            };
+    function cancelInvalidateTask(taskId) {
+        const tx = db.transaction([storeName], "readwrite");
+        const task = tx.objectStore(storeName).get(taskId);
+        task.onsuccess = e => {
+            const t = e.target.result;
+            t.status = "未使用";
+            tx.objectStore(storeName).put(t).onsuccess = () => loadTasksFromIndexedDB();
         };
     }
 
     function completeTask(taskId) {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(taskId);
-        request.onsuccess = function(event) {
-            const task = event.target.result;
-            task.status = "已完成";
-            store.put(task).onsuccess = function() {
-                updateTaskStats();
-                loadTasksFromIndexedDB();
-            };
+        const tx = db.transaction([storeName], "readwrite");
+        const task = tx.objectStore(storeName).get(taskId);
+        task.onsuccess = e => {
+            const t = e.target.result;
+            t.status = "已完成";
+            tx.objectStore(storeName).put(t).onsuccess = () => loadTasksFromIndexedDB();
+        };
+    }
+
+    function cancelCompleteTask(taskId) {
+        const tx = db.transaction([storeName], "readwrite");
+        const task = tx.objectStore(storeName).get(taskId);
+        task.onsuccess = e => {
+            const t = e.target.result;
+            t.status = "未使用";
+            tx.objectStore(storeName).put(t).onsuccess = () => loadTasksFromIndexedDB();
         };
     }
 
     function deleteTask(taskId) {
-        if (!confirm("确定要删除此任务吗？该操作无法撤销。")) return;
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(taskId);
-        request.onsuccess = function() {
-            updateTaskStats();
-            loadTasksFromIndexedDB();
-        };
-        request.onerror = function(event) {
-            alert("删除任务时发生错误，请重试。");
-        };
+        if (!confirm("确定要删除此任务吗？")) return;
+        const tx = db.transaction([storeName], "readwrite");
+        tx.objectStore(storeName).delete(taskId).onsuccess = () => loadTasksFromIndexedDB();
     }
 
     async function pasteFromClipboard() {
         try {
             const text = await navigator.clipboard.readText();
-            if (!text.trim()) {
-                alert("剪贴板内容为空！");
-                return;
-            }
+            if (!text.trim()) { alert("剪贴板内容为空！"); return; }
             document.getElementById('task-text').value = text;
             saveTask();
         } catch (err) {
@@ -511,33 +485,23 @@
     function saveTask() {
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
-        if (text.trim() === "") {
-            alert("任务文本不能为空！");
-            return;
-        }
+        if (!text.trim()) { alert("任务文本不能为空！"); return; }
 
         const regex = /(\d{9})/g;
         const matches = [...text.matchAll(regex)];
 
         if (matches.length > 0) {
-            let startIndex = 0;
-            let taskCount = 1;
-            matches.forEach((match) => {
-                const matchText = match[0];
-                const matchStart = match.index;
-                const matchEnd = matchStart + matchText.length;
-                const newText = text.slice(startIndex, matchStart) + matchText;
-                const newRemark = remark + taskCount;
-                const task = { text: newText, remark: newRemark, status: "未使用", createdAt: Date.now() };
-                addTaskToIndexedDB(task);
-                taskCount++;
-                startIndex = matchEnd;
+            let start = 0, count = 1;
+            matches.forEach(m => {
+                const newTxt = text.slice(start, m.index) + m[0];
+                const newRmk = remark + count;
+                addTaskToIndexedDB({ text: newTxt, remark: newRmk, status: "未使用", createdAt: Date.now() });
+                count++;
+                start = m.index + m[0].length;
             });
         } else {
-            const task = { text, remark, status: "未使用", createdAt: Date.now() };
-            addTaskToIndexedDB(task);
+            addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
         }
-        clearTaskInputs();
     }
 
     function clearTaskInputs() {
@@ -546,17 +510,8 @@
     }
 
     function editTask(taskId) {
-        const rows = document.querySelectorAll("#task-list tbody tr");
-        rows.forEach(row => {
-            const buttons = row.querySelectorAll("button");
-            let rowTaskId = null;
-            buttons.forEach(btn => {
-                const onClick = btn.getAttribute("onclick");
-                if (onClick && onClick.includes(`(${taskId})`)) {
-                    rowTaskId = taskId;
-                }
-            });
-            if (rowTaskId === taskId) {
+        document.querySelectorAll("#task-list tbody tr").forEach(row => {
+            if (row.outerHTML.includes(`(${taskId})`)) {
                 row.querySelector(".task-text").disabled = false;
                 row.querySelector(".task-remark").disabled = false;
                 row.querySelector(".btn-save").style.display = "inline-block";
@@ -564,37 +519,24 @@
                 row.querySelector(".btn-edit").style.display = "none";
             }
         });
-        currentEditingTaskId = taskId;
     }
 
     function saveTaskEdit(taskId) {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(taskId);
-        request.onsuccess = function(event) {
-            const task = event.target.result;
-            const rows = document.querySelectorAll("#task-list tbody tr");
-            rows.forEach(row => {
-                const buttons = row.querySelectorAll("button");
-                let rowTaskId = null;
-                buttons.forEach(btn => {
-                    const onClick = btn.getAttribute("onclick");
-                    if (onClick && onClick.includes(`(${taskId})`)) {
-                        rowTaskId = taskId;
-                    }
-                });
-                if (rowTaskId === taskId) {
+        const tx = db.transaction([storeName], "readwrite");
+        const taskReq = tx.objectStore(storeName).get(taskId);
+        taskReq.onsuccess = e => {
+            const task = e.target.result;
+            document.querySelectorAll("#task-list tbody tr").forEach(row => {
+                if (row.outerHTML.includes(`(${taskId})`)) {
                     task.text = row.querySelector(".task-text").value;
                     task.remark = row.querySelector(".task-remark").value;
-                    store.put(task).onsuccess = function() {
-                        loadTasksFromIndexedDB();
-                    };
+                    tx.objectStore(storeName).put(task).onsuccess = () => loadTasksFromIndexedDB();
                 }
             });
         };
     }
 
-    function cancelEdit(taskId) {
+    function cancelEdit() {
         loadTasksFromIndexedDB();
     }
 
@@ -607,32 +549,46 @@
         const term = searchTerm || document.getElementById("search").value;
         loadTasksFromIndexedDB().then(hasResult => {
             if (!hasResult && isUrlSearch && term.trim()) {
-                const task = {
-                    text: term,
-                    remark: "跳转自动保存",
-                    status: "未使用",
-                    createdAt: Date.now()
-                };
-                addTaskToIndexedDB(task);
+                addTaskToIndexedDB({ text: term, remark: "跳转自动保存", status: "未使用", createdAt: Date.now() });
             }
         });
     }
 
     function extractNumber(text) {
-        const regex = /(\d{9})/g;
-        const matches = [...text.matchAll(regex)];
+        const matches = [...text.matchAll(/(\d{9})/g)];
         if (matches.length > 0) return matches[0][0];
         const digits = text.match(/\d/g);
         return digits ? digits.join('').slice(0, 9) : "";
     }
 
-    function smartJump(taskText) {
+    // === 跳转函数（支持配置）===
+    async function jumpToJM(taskText) {
+        const num = extractNumber(taskText);
+        if (!num) { alert("未找到有效数字！"); return; }
+        const templateUrl = await getJMConfig();
+        let url;
+        if (templateUrl) {
+            const base = templateUrl.replace(/\/\d+\/?$/, '/');
+            url = `${base}${num}/`;
+        } else {
+            url = `https://jm18c-uoi.net/album/${num}/`;
+        }
+        window.open(url, '_blank');
+    }
+
+    async function smartJump(taskText) {
         const num = extractNumber(taskText);
         if (!num) { alert("未找到有效数字！"); return; }
         const len = num.length;
         let url = '';
         if (len >= 5 && len <= 8) {
-            url = `https://jm18c-uoi.net/album/${num}/`;
+            const templateUrl = await getJMConfig();
+            if (templateUrl) {
+                const base = templateUrl.replace(/\/\d+\/?$/, '/');
+                url = `${base}${num}/`;
+            } else {
+                url = `https://jm18c-uoi.net/album/${num}/`;
+            }
         } else if (len >= 9) {
             url = `https://booksreaders1.github.io/?pid=${num}`;
         } else {
@@ -642,17 +598,31 @@
         window.open(url, '_blank');
     }
 
-    function jumpToJM(taskText) {
-        const num = extractNumber(taskText);
-        if (!num) { alert("未找到有效数字！"); return; }
-        window.open(`https://jm18c-uoi.net/album/${num}/`, '_blank');
-    }
-
     function jumpToP(taskText) {
         const num = extractNumber(taskText);
         if (!num) { alert("未找到有效数字！"); return; }
         window.open(`https://booksreaders1.github.io/?pid=${num}`, '_blank');
     }
+
+    // 删除 JM 配置，恢复默认
+    function resetJMConfigToDefault() {
+        if (!confirm("确定要恢复 JM 跳转地址为默认值吗？\n默认地址：https://jm18c-uoi.net/album/")) {
+            return;
+        }
+        const transaction = db.transaction(["configs"], "readwrite");
+        const store = transaction.objectStore("configs");
+        store.delete("main"); // 删除配置，后续 getJMConfig() 将返回 null
+        alert("JM 跳转地址已恢复为默认值！");
+    }
+
+    // 初始化
+    window.onload = function () {
+        const pid = new URLSearchParams(window.location.search).get('pid');
+        if (pid) {
+            document.getElementById('search').value = pid;
+            searchTasks(pid, true);
+        }
+    };
 </script>
 
 </body>
