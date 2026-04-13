@@ -968,16 +968,41 @@
         const modal = document.createElement('div');
         modal.style = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:10000;`;
         const safeUrl = escapeHtml(url);
+        // 生成一个内联的 SVG 占位图 (Base64)
+        const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIj48L3JlY3Q+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiPjwvY2lyY2xlPjxwb2x5bGluZSBwb2ludHM9IjIxIDE1IDE2IDEwIDUgMjEiPjwvcG9seWxpbmU+PC9zdmc+';
+        
         modal.innerHTML = `
             <div style="position:relative;max-width:90vw;max-height:90vh;color:white;text-align:center;">
-                <button style="position:absolute;top:-40px;right:0;background:white;border:none;padding:8px 12px;border-radius:4px;">✕ 关闭</button>
-                <div style="margin-top:20px;">
-                    <img src="${safeUrl}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;"
-                         onload="this.parentElement.querySelector('.error').style.display='none';"
-                         onerror="this.style.display='none';this.parentElement.querySelector('.error').style.display='block';"/>
-                    <div class="error" style="display:none;margin-top:10px;color:#ff8a80;">❌ 预览图加载失败</div>
+                <button onclick="this.closest('.preview-modal').remove()" style="position:absolute;top:-40px;right:0;background:white;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;font-weight:bold;">✕ 关闭</button>
+                <div style="margin-top:20px;position:relative;">
+                    <img src="${safeUrl}" 
+                         style="max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:4px;"
+                         onerror="
+                            this.style.display='none';
+                            const container = this.parentElement;
+                            container.querySelector('.loading-spinner').style.display='none';
+                            container.querySelector('.image-error-state').style.display='flex';
+                         "/>
+                    <!-- 加载中 Spinner -->
+                    <div class="loading-spinner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:10px;">
+                        <svg style="width:40px;height:40px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                        </svg>
+                        <span>加载预览中...</span>
+                    </div>
+                    <!-- 错误状态占位符 -->
+                    <div class="image-error-state" style="display:none;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:15px;background:#2c2c2c;border:2px dashed #555;border-radius:8px;padding:20px;">
+                        <img src="${placeholderSvg}" style="width:60px;height:60px;opacity:0.6;" alt="icon">
+                        <div style="color:#aaa;font-size:14px;">预览图加载失败</div>
+                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" 
+                           style="background:#007bff;color:white;padding:8px 16px;border-radius:4px;text-decoration:none;font-size:14px;transition:background 0.2s;">
+                           🚀 在新窗口打开原图
+                        </a>
+                    </div>
                 </div>
             </div>
+            <style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
         `;
         modal.querySelector('button').onclick = () => document.body.removeChild(modal);
         document.body.appendChild(modal);

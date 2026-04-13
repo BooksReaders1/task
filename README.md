@@ -155,7 +155,13 @@ if (作品 ID 长度 >= 5 && <= 8) {
 
 ## 📝 更新日志
 
-============= 2026-04-13 07:48:06 commit current : **Fix README log logic and update view toggle UI** ==========
+============= 2026-04-13 08:15:00 commit current : **Add graceful degradation for preview images** ==========
+
+<center>为预览图弹窗添加错误处理机制：图片加载失败时自动显示友好的 SVG 占位图，避免显示浏览器默认的“破图”图标，提升用户体验</center>
+
+========== ==== commit end =================
+
+============= 2026-04-13 07:48:06 : **Fix README log logic and update view toggle UI** ==========
 
 <center>修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称</center>
 
