@@ -908,28 +908,20 @@
     function getSourceType(text) {
         if (!text) return 'other';
         
-        // 1. 尝试提取 JM ID (逻辑同 jumpToTarget)
-        // 匹配 jm-comic, 18comic, copymanga 等常见域名后的数字
-        const jmRegex = /(?:jm-comic\.org|jm-comic\.cc|18comic\.vip|18comic\.org|copymanga\.com|copymanga\.net|copymanga\.info|copymanga\.tv|.*?jm.*?|.*?18comic.*?)[\/a-zA-Z0-9_-]*?(\d{5,})/i;
-        const jmMatch = text.match(jmRegex);
-        if (jmMatch && jmMatch[1]) {
-            return 'jm';
+        // 使用与 smartJump 相同的 extractNumber 函数提取数字
+        const num = extractNumber(text);
+        if (!num) return 'other';
+        
+        const len = num.length;
+        
+        // 与 smartJump 完全一致的判断逻辑
+        if (len >= 5 && len <= 8) {
+            return 'jm'; // JM: 5-8 位数字
+        } else if (len >= 9) {
+            return 'pixiv'; // P 站：9 位及以上数字
+        } else {
+            return 'other'; // 位数不足，归为其他
         }
-
-        // 2. 尝试提取 Pixiv ID (逻辑同 jumpToTarget)
-        const pixivRegex = /pixiv\.net\/artworks\/(\d+)/i;
-        const pixivMatch = text.match(pixivRegex);
-        if (pixivMatch && pixivMatch[1]) {
-            return 'pixiv';
-        }
-
-        // 3. 检查是否包含其他常见链接
-        const urlRegex = /https?:\/\/[^\s]+/i;
-        if (urlRegex.test(text)) {
-            return 'other'; // 有链接但不是 JM 或 Pixiv
-        }
-
-        return 'other'; // 纯文本或其他
     }
 
     // ========== 预览 ==========
