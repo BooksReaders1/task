@@ -60,12 +60,10 @@
         }
 
         .filter-view-switch {
-            position: absolute;
-            top: 0;
-            right: 0;
             display: flex;
-            align-items: center;
-            z-index: 10;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+            width: 100%;
         }
 
         .stats-card-group {
@@ -415,7 +413,6 @@
                 grid-template-columns: repeat(2, 1fr);
             }
             .filter-view-switch {
-                position: static;
                 justify-content: flex-end;
                 margin-bottom: 8px;
             }
@@ -506,9 +503,9 @@
 </div>
 
 <div class="stats-cards">
+    <!-- 视图切换按钮 - 放在卡片上方 -->
     <div class="filter-view-switch">
-        <span id="view-mode-label" style="font-size:12px; color:#6b7280; margin-right:8px;">状态视图</span>
-        <button class="unified-button" style="padding:4px 12px; font-size:12px; background-color:#6366f1; color:white;" onclick="toggleFilterView()">🔄 切换视图</button>
+        <button id="view-switch-btn" class="unified-button" style="padding:6px 14px; font-size:13px; background-color:#f3f4f6; color:#4b5563; border:1px solid #d1d5db;" onclick="toggleFilterView()">切换到来源视图 (全部/JM/PIXIV/其他)</button>
     </div>
     
     <!-- 状态视图卡片 -->
@@ -1301,17 +1298,17 @@
     function toggleFilterView() {
         const statusCards = document.getElementById('status-filter-cards');
         const sourceCards = document.getElementById('source-filter-cards');
-        const label = document.getElementById('view-mode-label');
+        const switchBtn = document.getElementById('view-switch-btn');
         
         if (currentViewMode === 'status') {
             statusCards.style.display = 'none';
             sourceCards.style.display = 'grid';
-            label.textContent = '来源视图';
+            switchBtn.textContent = '切换到状态视图 (未使用/已完成/已失效)';
             currentViewMode = 'source';
         } else {
             statusCards.style.display = 'grid';
             sourceCards.style.display = 'none';
-            label.textContent = '状态视图';
+            switchBtn.textContent = '切换到来源视图 (全部/JM/PIXIV/其他)';
             currentViewMode = 'status';
         }
         // 重置筛选

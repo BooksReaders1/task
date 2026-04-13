@@ -155,37 +155,43 @@ if (作品 ID 长度 >= 5 && <= 8) {
 
 ## 📝 更新日志
 
-============= 2026-04-13 05:52:03 commit 6289341 : **Fix JM and PIXIV detection logic to match smart jump behavior** ==========
+============= 2026-04-13 12:00:00 commit current : **Update view switch button text to show target view** ==========
+
+<center>将视图切换按钮移至统计卡片上方，按钮文本动态显示点击后将切换到的目标视图（如"切换到来源视图"或"切换到状态视图"）</center>
+
+========== ==== commit end =================
+
+============= 2026-04-13 05:52:03 : **Fix JM and PIXIV detection logic to match smart jump behavior** ==========
 
 <center>修复 getSourceType 函数逻辑，使其与智能跳转判断条件完全一致（基于数字位数：5-8 位为 JM，9 位及以上为 PIXIV）</center>
 
 ========== ==== commit end =================
 
-============= 2026-04-13 05:48:46 commit 6289341 : **Add source-based filtering cards with view switcher** ==========
+============= 2026-04-13 05:48:46 : **Add source-based filtering cards with view switcher** ==========
 
 <center>新增来源视图切换功能，支持按"全部/JM/PIXIV/其他"筛选任务，统计卡片与智能跳转逻辑保持一致</center>
 
 ========== ==== commit end =================
 
-============= 2026-04-13 05:48:46 commit 6289341 : **Refactor task card UI with improved layout and action menu** ==========
+============= 2026-04-13 05:48:46 : **Refactor task card UI with improved layout and action menu** ==========
 
 <center>重构任务卡片 UI，采用改良版方案一：常驻预览 + 跳转按钮，收藏移至标题旁，状态标签可点击切换，其他操作收纳至更多菜单</center>
 
 ========== ==== commit end =================
 
-============= 2026-04-13 05:48:46 commit 6289341 : **Replace alert/confirm/prompt with non-blocking Toast and custom dialogs** ==========
+============= 2026-04-13 05:48:46 : **Replace alert/confirm/prompt with non-blocking Toast and custom dialogs** ==========
 
 <center>替换所有原生弹窗为页面顶部悬浮 Toast 通知和自定义对话框，避免硬打断用户体验</center>
 
 ========== ==== commit end =================
 
-============= 2026-04-13 05:48:46 commit 6289341 : **Add HTML escaping to prevent XSS vulnerabilities** ==========
+============= 2026-04-13 05:48:46 : **Add HTML escaping to prevent XSS vulnerabilities** ==========
 
 <center>添加 HTML 转义函数，对任务文本、备注、状态字段和预览图 URL 进行安全处理，防止跨站脚本攻击</center>
 
 ========== ==== commit end =================
 
-============= 2026-04-13 05:48:46 commit 6289341 : **Initial commit: Task management system based on IndexedDB** ==========
+============= 2026-04-13 05:48:46 : **Initial commit: Task management system based on IndexedDB** ==========
 
 <center>初始版本：基于 IndexedDB 的任务管理系统，支持增删改查、状态分类、收藏、搜索筛选、统计面板、JM 配置和预览图功能</center>
 
