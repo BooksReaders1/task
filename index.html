@@ -48,22 +48,49 @@
         .btn-unfavorite { background-color: #f48fb1; color: black; }
         .btn-preview    { background-color: #4caf50; color: white; }
 
-        .stats-cards {
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 10px 0;
+        .stats-container {
             margin: 20px 0;
-            -webkit-overflow-scrolling: touch;
-            position: relative;
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
-        .filter-view-switch {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 8px;
+        .view-switcher-row {
             width: 100%;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .view-toggle-btn {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            color: #495057;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .view-toggle-btn:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .view-toggle-btn:active {
+            transform: translateY(0);
         }
 
         .stats-card-group {
@@ -412,9 +439,10 @@
             #source-filter-cards.stats-card-group {
                 grid-template-columns: repeat(2, 1fr);
             }
-            .filter-view-switch {
-                justify-content: flex-end;
-                margin-bottom: 8px;
+            .view-toggle-btn {
+                max-width: 100%;
+                font-size: 14px;
+                padding: 8px 12px;
             }
         }
 
@@ -502,10 +530,12 @@
     <button class="unified-button btn-clear" onclick="clearFilters()">🧹 清空条件</button>
 </div>
 
-<div class="stats-cards">
-    <!-- 视图切换按钮 - 放在卡片上方 -->
-    <div class="filter-view-switch">
-        <button id="view-switch-btn" class="unified-button" style="padding:6px 14px; font-size:13px; background-color:#f3f4f6; color:#4b5563; border:1px solid #d1d5db;" onclick="toggleFilterView()">切换到来源视图 (全部/JM/PIXIV/其他)</button>
+<div class="stats-container">
+    <!-- 视图切换按钮 - 独立一行 -->
+    <div class="view-switcher-row">
+        <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()">
+            🔄 状态视图
+        </button>
     </div>
     
     <!-- 状态视图卡片 -->
@@ -1298,17 +1328,17 @@
     function toggleFilterView() {
         const statusCards = document.getElementById('status-filter-cards');
         const sourceCards = document.getElementById('source-filter-cards');
-        const switchBtn = document.getElementById('view-switch-btn');
+        const toggleBtn = document.getElementById('view-toggle-btn');
         
         if (currentViewMode === 'status') {
             statusCards.style.display = 'none';
             sourceCards.style.display = 'grid';
-            switchBtn.textContent = '切换到状态视图 (未使用/已完成/已失效)';
+            toggleBtn.innerHTML = '🌐 来源视图';
             currentViewMode = 'source';
         } else {
             statusCards.style.display = 'grid';
             sourceCards.style.display = 'none';
-            switchBtn.textContent = '切换到来源视图 (全部/JM/PIXIV/其他)';
+            toggleBtn.innerHTML = '🔄 状态视图';
             currentViewMode = 'status';
         }
         // 重置筛选
