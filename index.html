@@ -131,6 +131,251 @@
             padding: 2px 0;
         }
 
+        /* 改良版方案一：卡片式任务布局 */
+        .task-card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .task-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .task-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .task-card-title-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .task-card-title {
+            font-weight: 600;
+            color: #2c3e50;
+            word-break: break-word;
+            line-height: 1.4;
+            font-size: 15px;
+        }
+
+        .task-card-favorite-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            color: #d1d5db;
+        }
+
+        .task-card-favorite-btn.active {
+            color: #fbbf24;
+        }
+
+        .task-card-favorite-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .task-card-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #7f8c8d;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .task-card-status-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .task-card-status-badge:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        .status-pending { background: #fee2e2; color: #991b1b; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        .status-invalid { background: #f3f4f6; color: #4b5563; text-decoration: line-through; }
+
+        .task-card-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+        }
+
+        .task-card-primary-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .task-card-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+
+        .task-card-btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .task-card-btn-primary:hover { background: #2563eb; }
+
+        .task-card-btn-secondary {
+            background: #10b981;
+            color: white;
+        }
+        .task-card-btn-secondary:hover { background: #059669; }
+
+        .task-card-btn-more {
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 6px 10px;
+            font-size: 16px;
+            line-height: 1;
+        }
+        .task-card-btn-more:hover { background: #e5e7eb; }
+
+        /* 更多菜单下拉框 (PC) */
+        .task-card-more-menu {
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            min-width: 140px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            margin-bottom: 8px;
+        }
+
+        .task-card-more-menu.show {
+            display: flex;
+        }
+
+        .task-card-more-item {
+            padding: 10px 16px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            font-size: 13px;
+            color: #374151;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .task-card-more-item:hover {
+            background: #f3f4f6;
+        }
+
+        .task-card-more-item.danger {
+            color: #ef4444;
+        }
+        .task-card-more-item.danger:hover {
+            background: #fee2e2;
+        }
+
+        /* 移动端底部弹窗 (Action Sheet) */
+        .mobile-action-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 16px 16px 0 0;
+            padding: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            z-index: 10002;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mobile-action-sheet.show {
+            transform: translateY(0);
+        }
+
+        .mobile-action-item {
+            padding: 14px;
+            border: none;
+            background: #f9fafb;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2937;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mobile-action-item:active {
+            background: #e5e7eb;
+        }
+
+        .mobile-action-item.danger {
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .mobile-action-close {
+            margin-top: 10px;
+            padding: 12px;
+            background: #f3f4f6;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #4b5563;
+            cursor: pointer;
+        }
+
         @media (max-width: 600px) {
             body { padding: 10px; }
             h1 { font-size: 1.5em; }
@@ -249,18 +494,21 @@
 </div>
 
 <h2>任务列表</h2>
-<table class="task-table" id="task-list">
-    <thead>
-        <tr>
-            <th>任务文本</th>
-            <th>备注</th>
-            <th>状态</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
+<div class="task-card-container" id="task-card-list">
+    <!-- 卡片式任务列表将在这里渲染 -->
+</div>
+
+<!-- 移动端底部弹窗容器 -->
+<div class="mobile-action-sheet" id="mobile-action-sheet">
+    <button class="mobile-action-item" id="mobile-action-complete">✅ 标记完成</button>
+    <button class="mobile-action-item" id="mobile-action-favorite">⭐ 收藏/取消</button>
+    <button class="mobile-action-item" id="mobile-action-invalidate">❌ 标记失效</button>
+    <hr style="border:0; border-top:1px solid #e5e7eb; margin:4px 0;">
+    <button class="mobile-action-item" id="mobile-action-copy">📋 复制内容</button>
+    <button class="mobile-action-item" id="mobile-action-edit">✏️ 编辑任务</button>
+    <button class="mobile-action-item danger" id="mobile-action-delete">🗑️ 删除任务</button>
+    <button class="mobile-action-close" id="mobile-action-close">关闭</button>
+</div>
 
 <script>
     let db;
@@ -673,61 +921,181 @@
         }
     }
 
-    // ========== UI ==========
+    // ========== UI 渲染（改良版方案一：卡片式布局）==========
+    let currentMobileTaskId = null; // 当前移动端操作的任务 ID
+
     function displayTasks(tasks) {
-        const tbody = document.getElementById("task-list").getElementsByTagName('tbody')[0];
-        tbody.innerHTML = "";
+        const container = document.getElementById("task-card-list");
+        container.innerHTML = "";
         const searchTerm = (document.getElementById("search")?.value || "").toLowerCase();
         const filtered = tasks.filter(task =>
             task.text.toLowerCase().includes(searchTerm) ||
             task.remark.toLowerCase().includes(searchTerm)
         );
 
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="empty-state-icon">📭</div>
+                    <div>暂无任务</div>
+                </div>
+            `;
+            return;
+        }
+
         filtered.forEach(task => {
             const escapedText = escapeHtml(task.text || "");
             const escapedRemark = escapeHtml(task.remark || "");
-            const row = document.createElement("tr");
-            if (task.favorite) {
-                row.classList.add("favorite");
-            } else {
-                if (task.status === "已完成") row.classList.add("completed");
-                else if (task.status === "已失效") row.classList.add("expired");
-                else row.classList.add("incomplete");
-            }
+            const card = document.createElement("div");
+            card.className = "task-card";
+            
+            // 状态样式类
+            let statusClass = "status-pending";
+            if (task.status === "已完成") statusClass = "status-completed";
+            else if (task.status === "已失效") statusClass = "status-invalid";
 
-            row.innerHTML = `
-                <td><input type="text" class="task-text" value="${escapedText}" disabled /></td>
-                <td><input type="text" class="task-remark" value="${escapedRemark}" disabled /></td>
-                <td><span>${task.favorite ? '❤️ ' : ''}${escapeHtml(task.status)}</span></td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="unified-button btn-edit" onclick="editTask(${task.id})">✏️ 编辑</button>
-                        <button class="unified-button btn-save" style="display:none;" onclick="saveTaskEdit(${task.id})">💾 保存</button>
-                        <button class="unified-button btn-cancel" style="display:none;" onclick="cancelEdit(${task.id})">❌ 取消</button>
-                        <button class="unified-button btn-delete" onclick="deleteTask(${task.id})">🗑️ 删除</button>
-                        ${task.status === "未使用"
-                            ? `<button class="unified-button btn-invalidate" onclick="invalidateTask(${task.id})">⏳ 失效</button>
-                               <button class="unified-button btn-complete" onclick="completeTask(${task.id})">✅ 完成</button>`
-                            : task.status === "已完成"
-                            ? `<button class="unified-button btn-restore" onclick="cancelCompleteTask(${task.id})">↩️ 取消完成</button>`
-                            : task.status === "已失效"
-                            ? `<button class="unified-button btn-restore" onclick="cancelInvalidateTask(${task.id})">↩️ 取消失效</button>`
-                            : ""
-                        }
-                        ${task.favorite
-                            ? `<button class="unified-button btn-unfavorite" onclick="toggleFavorite(${task.id})">💔 取消喜欢</button>`
-                            : `<button class="unified-button btn-favorite" onclick="toggleFavorite(${task.id})">❤️ 喜欢</button>`
-                        }
-                        <button class="unified-button btn-preview" onclick="previewTask(${task.id})">🖼️ 预览</button>
-                        <button class="unified-button btn-smart" onclick="smartJump(${JSON.stringify(task.text)})">🤖 智能跳转</button>
-                        <button class="unified-button btn-jm" onclick="jumpToJM(${JSON.stringify(task.text)})">📘 跳转到JM</button>
-                        <button class="unified-button btn-p" onclick="jumpToP(${JSON.stringify(task.text)})">🖼️ 跳转到P站</button>
+            // 收藏状态
+            const favActive = task.favorite ? "active" : "";
+            const favIcon = task.favorite ? "⭐" : "☆";
+
+            card.innerHTML = `
+                <div class="task-card-header">
+                    <div class="task-card-title-wrapper">
+                        <div class="task-card-title">${escapedText}</div>
+                        <button class="task-card-favorite-btn ${favActive}" onclick="toggleFavorite(${task.id})" title="收藏">${favIcon}</button>
                     </div>
-                </td>
+                </div>
+                <div class="task-card-meta">
+                    <span>📝 ${escapedRemark || "无备注"}</span>
+                    <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
+                </div>
+                <div class="task-card-actions">
+                    <div class="task-card-primary-actions">
+                        <button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>
+                        <button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>
+                    </div>
+                    <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
+                    <div class="task-card-more-menu" id="more-menu-${task.id}">
+                        <button class="task-card-more-item" onclick="completeTask(${task.id}); hideAllMoreMenus()">✅ 标记完成</button>
+                        <button class="task-card-more-item" onclick="toggleFavorite(${task.id}); hideAllMoreMenus()">⭐ 收藏/取消</button>
+                        <button class="task-card-more-item" onclick="invalidateTask(${task.id}); hideAllMoreMenus()">❌ 标记失效</button>
+                        <button class="task-card-more-item" onclick="copyTaskText(${task.id}); hideAllMoreMenus()">📋 复制内容</button>
+                        <button class="task-card-more-item" onclick="editTaskInCard(${task.id}); hideAllMoreMenus()">✏️ 编辑任务</button>
+                        <button class="task-card-more-item danger" onclick="deleteTask(${task.id}); hideAllMoreMenus()">🗑️ 删除任务</button>
+                    </div>
+                </div>
             `;
-            tbody.appendChild(row);
+            container.appendChild(card);
         });
     }
+
+    function hideAllMoreMenus() {
+        document.querySelectorAll(".task-card-more-menu").forEach(menu => {
+            menu.classList.remove("show");
+        });
+    }
+
+    function toggleMoreMenu(event, taskId) {
+        event.stopPropagation();
+        hideAllMoreMenus();
+        const menu = document.getElementById(`more-menu-${taskId}`);
+        if (menu) {
+            menu.classList.toggle("show");
+        }
+    }
+
+    // 点击其他地方关闭菜单
+    document.addEventListener('click', () => {
+        hideAllMoreMenus();
+    });
+
+    // 循环切换状态
+    function cycleTaskStatus(id) {
+        const req = db.transaction([storeName], "readwrite").objectStore(storeName).get(id);
+        req.onsuccess = () => {
+            const task = req.result;
+            const statusCycle = ["未使用", "已完成", "已失效"];
+            const currentIndex = statusCycle.indexOf(task.status);
+            task.status = statusCycle[(currentIndex + 1) % statusCycle.length];
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+        };
+    }
+
+    // 复制任务文本
+    function copyTaskText(id) {
+        const req = db.transaction([storeName], "readwrite").objectStore(storeName).get(id);
+        req.onsuccess = () => {
+            const task = req.result;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(task.text).then(() => {
+                    showToast("✅ 已复制到剪贴板", "success");
+                });
+            } else {
+                showToast("❌ 浏览器不支持剪贴板 API", "error");
+            }
+        };
+    }
+
+    // 卡片内编辑任务
+    function editTaskInCard(id) {
+        const req = db.transaction([storeName], "readwrite").objectStore(storeName).get(id);
+        req.onsuccess = () => {
+            const task = req.result;
+            showPrompt("编辑任务", task.text).then(newValue => {
+                if (newValue !== null && newValue.trim()) {
+                    updateTaskInDB(id, { text: newValue.trim() }).then(() => {
+                        showToast("✅ 任务已更新", "success");
+                    });
+                } else if (newValue !== null) {
+                    showToast("❌ 任务文本不能为空", "error");
+                }
+            });
+        };
+    }
+
+    // 移动端 Action Sheet 支持
+    function showMobileActionSheet(taskId) {
+        currentMobileTaskId = taskId;
+        const sheet = document.getElementById("mobile-action-sheet");
+        sheet.classList.add("show");
+    }
+
+    function hideMobileActionSheet() {
+        const sheet = document.getElementById("mobile-action-sheet");
+        sheet.classList.remove("show");
+        currentMobileTaskId = null;
+    }
+
+    // 绑定移动端按钮事件
+    document.getElementById("mobile-action-close")?.addEventListener("click", hideMobileActionSheet);
+    document.getElementById("mobile-action-complete")?.addEventListener("click", () => {
+        if (currentMobileTaskId) completeTask(currentMobileTaskId);
+        hideMobileActionSheet();
+    });
+    document.getElementById("mobile-action-favorite")?.addEventListener("click", () => {
+        if (currentMobileTaskId) toggleFavorite(currentMobileTaskId);
+        hideMobileActionSheet();
+    });
+    document.getElementById("mobile-action-invalidate")?.addEventListener("click", () => {
+        if (currentMobileTaskId) invalidateTask(currentMobileTaskId);
+        hideMobileActionSheet();
+    });
+    document.getElementById("mobile-action-copy")?.addEventListener("click", () => {
+        if (currentMobileTaskId) copyTaskText(currentMobileTaskId);
+        hideMobileActionSheet();
+    });
+    document.getElementById("mobile-action-edit")?.addEventListener("click", () => {
+        if (currentMobileTaskId) editTaskInCard(currentMobileTaskId);
+        hideMobileActionSheet();
+    });
+    document.getElementById("mobile-action-delete")?.addEventListener("click", async () => {
+        if (currentMobileTaskId) {
+            if (await showConfirm("确定删除？")) {
+                deleteTask(currentMobileTaskId);
+            }
+        }
+        hideMobileActionSheet();
+    });
 
     // ========== 任务操作（略）==========
     async function deleteTask(id) {
@@ -784,45 +1152,19 @@
         document.getElementById("task-remark").value = "";
     }
 
+    // 保留旧的 editTask 函数以防兼容性问题，但不再使用
     function editTask(id) {
-        const rows = document.querySelectorAll("#task-list tbody tr");
-        for (let row of rows) {
-            const editBtn = row.querySelector('.btn-edit');
-            if (editBtn && editBtn.getAttribute('onclick').includes(`(${id})`)) {
-                currentEditingRow = row;
-                row.querySelector(".task-text").disabled = false;
-                row.querySelector(".task-remark").disabled = false;
-                row.querySelector(".btn-save").style.display = "inline-block";
-                row.querySelector(".btn-cancel").style.display = "inline-block";
-                row.querySelector(".btn-edit").style.display = "none";
-                break;
-            }
-        }
+        console.log("请使用 editTaskInCard 进行卡片编辑");
+        editTaskInCard(id);
     }
 
     async function saveTaskEdit(taskId) {
-        if (!currentEditingRow) return;
-        const newText = currentEditingRow.querySelector(".task-text").value;
-        const newRemark = currentEditingRow.querySelector(".task-remark").value;
-        const previewUrl = generatePreviewUrl(newText); // 同步
-        const tx = db.transaction([storeName], "readwrite");
-        const req = tx.objectStore(storeName).get(taskId);
-        req.onsuccess = () => {
-            const task = req.result;
-            if (task) {
-                task.text = newText;
-                task.remark = newRemark;
-                if (previewUrl) task.previewUrl = previewUrl;
-                tx.objectStore(storeName).put(task).onsuccess = () => {
-                    currentEditingRow = null;
-                    loadTasksFromIndexedDB();
-                };
-            }
-        };
+        // 兼容旧版表格编辑，现在统一使用 editTaskInCard
+        console.log("表格编辑已废弃，请使用卡片编辑");
     }
 
     function cancelEdit() {
-        currentEditingRow = null;
+        // 兼容旧版
         loadTasksFromIndexedDB();
     }
 
