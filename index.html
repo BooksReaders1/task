@@ -56,6 +56,27 @@
             padding: 10px 0;
             margin: 20px 0;
             -webkit-overflow-scrolling: touch;
+            position: relative;
+        }
+
+        .filter-view-switch {
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .stats-card-group {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+
+        #source-filter-cards.stats-card-group {
+            grid-template-columns: repeat(4, 1fr);
         }
 
         .stats-card {
@@ -387,6 +408,17 @@
                 margin: 2px 3px !important;
                 font-size: 12px !important;
             }
+            .stats-card-group {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            #source-filter-cards.stats-card-group {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .filter-view-switch {
+                position: static;
+                justify-content: flex-end;
+                margin-bottom: 8px;
+            }
         }
 
         @media (max-width: 400px) {
@@ -394,6 +426,9 @@
                 padding: 3px 5px !important;
                 margin: 1px 2px !important;
                 font-size: 11px !important;
+            }
+            .stats-card-group {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
@@ -471,25 +506,53 @@
 </div>
 
 <div class="stats-cards">
-    <div class="stats-card all" onclick="filterByStatus('')">
-        <h3>全部任务</h3>
-        <span id="total-tasks">0</span>
+    <div class="filter-view-switch">
+        <span id="view-mode-label" style="font-size:12px; color:#6b7280; margin-right:8px;">状态视图</span>
+        <button class="unified-button" style="padding:4px 12px; font-size:12px; background-color:#6366f1; color:white;" onclick="toggleFilterView()">🔄 切换视图</button>
     </div>
-    <div class="stats-card favorite" onclick="filterByFavorite()">
-        <h3>喜欢</h3>
-        <span id="favorite-tasks">0</span>
+    
+    <!-- 状态视图卡片 -->
+    <div id="status-filter-cards" class="stats-card-group">
+        <div class="stats-card all" onclick="filterByStatus('')">
+            <h3>全部任务</h3>
+            <span id="total-tasks">0</span>
+        </div>
+        <div class="stats-card favorite" onclick="filterByFavorite()">
+            <h3>喜欢</h3>
+            <span id="favorite-tasks">0</span>
+        </div>
+        <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
+            <h3>未完成</h3>
+            <span id="incomplete-tasks">0</span>
+        </div>
+        <div class="stats-card completed" onclick="filterByStatus('已完成')">
+            <h3>已完成</h3>
+            <span id="completed-tasks">0</span>
+        </div>
+        <div class="stats-card expired" onclick="filterByStatus('已失效')">
+            <h3>已失效</h3>
+            <span id="expired-tasks">0</span>
+        </div>
     </div>
-    <div class="stats-card incomplete" onclick="filterByStatus('未使用')">
-        <h3>未完成</h3>
-        <span id="incomplete-tasks">0</span>
-    </div>
-    <div class="stats-card completed" onclick="filterByStatus('已完成')">
-        <h3>已完成</h3>
-        <span id="completed-tasks">0</span>
-    </div>
-    <div class="stats-card expired" onclick="filterByStatus('已失效')">
-        <h3>已失效</h3>
-        <span id="expired-tasks">0</span>
+    
+    <!-- 来源视图卡片 -->
+    <div id="source-filter-cards" class="stats-card-group" style="display:none;">
+        <div class="stats-card all" onclick="filterBySource('all')" style="background-color:#6b7280;">
+            <h3>全部</h3>
+            <span id="source-all-count">0</span>
+        </div>
+        <div class="stats-card jm" onclick="filterBySource('jm')" style="background-color:#ef4444;">
+            <h3>JM</h3>
+            <span id="source-jm-count">0</span>
+        </div>
+        <div class="stats-card pixiv" onclick="filterBySource('pixiv')" style="background-color:#0096fa;">
+            <h3>PIXIV</h3>
+            <span id="source-pixiv-count">0</span>
+        </div>
+        <div class="stats-card other" onclick="filterBySource('other')" style="background-color:#8b5cf6;">
+            <h3>其他</h3>
+            <span id="source-other-count">0</span>
+        </div>
     </div>
 </div>
 
@@ -825,7 +888,48 @@
             document.getElementById('incomplete-tasks').textContent = incom;
             document.getElementById('completed-tasks').textContent = comp;
             document.getElementById('expired-tasks').textContent = exp;
+            
+            // 更新来源统计
+            let jmCount = 0, pixivCount = 0, otherCount = 0;
+            tasks.forEach(t => {
+                const sourceType = getSourceType(t.text);
+                if (sourceType === 'jm') jmCount++;
+                else if (sourceType === 'pixiv') pixivCount++;
+                else otherCount++;
+            });
+            document.getElementById('source-all-count').textContent = total;
+            document.getElementById('source-jm-count').textContent = jmCount;
+            document.getElementById('source-pixiv-count').textContent = pixivCount;
+            document.getElementById('source-other-count').textContent = otherCount;
         };
+    }
+
+    // 获取任务来源类型 (与智能跳转逻辑完全一致)
+    function getSourceType(text) {
+        if (!text) return 'other';
+        
+        // 1. 尝试提取 JM ID (逻辑同 jumpToTarget)
+        // 匹配 jm-comic, 18comic, copymanga 等常见域名后的数字
+        const jmRegex = /(?:jm-comic\.org|jm-comic\.cc|18comic\.vip|18comic\.org|copymanga\.com|copymanga\.net|copymanga\.info|copymanga\.tv|.*?jm.*?|.*?18comic.*?)[\/a-zA-Z0-9_-]*?(\d{5,})/i;
+        const jmMatch = text.match(jmRegex);
+        if (jmMatch && jmMatch[1]) {
+            return 'jm';
+        }
+
+        // 2. 尝试提取 Pixiv ID (逻辑同 jumpToTarget)
+        const pixivRegex = /pixiv\.net\/artworks\/(\d+)/i;
+        const pixivMatch = text.match(pixivRegex);
+        if (pixivMatch && pixivMatch[1]) {
+            return 'pixiv';
+        }
+
+        // 3. 检查是否包含其他常见链接
+        const urlRegex = /https?:\/\/[^\s]+/i;
+        if (urlRegex.test(text)) {
+            return 'other'; // 有链接但不是 JM 或 Pixiv
+        }
+
+        return 'other'; // 纯文本或其他
     }
 
     // ========== 预览 ==========
@@ -1195,6 +1299,44 @@
             let tasks = req.result;
             tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
             tasks = tasks.filter(t => t.favorite);
+            tasks.sort((a, b) => b.createdAt - a.createdAt);
+            displayTasks(tasks);
+        };
+    }
+
+    // 切换视图模式
+    let currentViewMode = 'status'; // 'status' or 'source'
+    function toggleFilterView() {
+        const statusCards = document.getElementById('status-filter-cards');
+        const sourceCards = document.getElementById('source-filter-cards');
+        const label = document.getElementById('view-mode-label');
+        
+        if (currentViewMode === 'status') {
+            statusCards.style.display = 'none';
+            sourceCards.style.display = 'grid';
+            label.textContent = '来源视图';
+            currentViewMode = 'source';
+        } else {
+            statusCards.style.display = 'grid';
+            sourceCards.style.display = 'none';
+            label.textContent = '状态视图';
+            currentViewMode = 'status';
+        }
+        // 重置筛选
+        clearFilters();
+    }
+
+    // 按来源筛选
+    function filterBySource(sourceType) {
+        const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+        req.onsuccess = () => {
+            let tasks = req.result;
+            tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
+            
+            if (sourceType !== 'all') {
+                tasks = tasks.filter(t => getSourceType(t.text) === sourceType);
+            }
+            
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             displayTasks(tasks);
         };
