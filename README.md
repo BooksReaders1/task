@@ -155,9 +155,9 @@ if (作品 ID 长度 >= 5 && <= 8) {
 
 ## 📝 更新日志
 
-============= 2026-04-13 12:00:00 commit current : **Update view switch button text to show target view** ==========
+============= 2026-04-13 12:00:00 commit current : **Redesign view switch button with simplified UI** ==========
 
-<center>将视图切换按钮移至统计卡片上方，按钮文本动态显示点击后将切换到的目标视图（如"切换到来源视图"或"切换到状态视图"）</center>
+<center>重构视图切换区域：按钮独立成行位于统计卡片上方，采用简洁样式仅显示 Emoji+ 视图名称（🔄 状态视图/🌐 来源视图），优化移动端响应式适配</center>
 
 ========== ==== commit end =================
 
