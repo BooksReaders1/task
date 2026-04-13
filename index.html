@@ -331,6 +331,14 @@
         }
     }
 
+    // ========== 安全工具函数 ==========
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // ========== 核心逻辑 ==========
     function extractNumber(text) {
         const m = [...text.matchAll(/(\d{9})/g)];
@@ -416,11 +424,12 @@
 
         const modal = document.createElement('div');
         modal.style = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:10000;`;
+        const safeUrl = escapeHtml(url);
         modal.innerHTML = `
             <div style="position:relative;max-width:90vw;max-height:90vh;color:white;text-align:center;">
                 <button style="position:absolute;top:-40px;right:0;background:white;border:none;padding:8px 12px;border-radius:4px;">✕ 关闭</button>
                 <div style="margin-top:20px;">
-                    <img src="${url}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;"
+                    <img src="${safeUrl}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;"
                          onload="this.parentElement.querySelector('.error').style.display='none';"
                          onerror="this.style.display='none';this.parentElement.querySelector('.error').style.display='block';"/>
                     <div class="error" style="display:none;margin-top:10px;color:#ff8a80;">❌ 预览图加载失败</div>
@@ -503,8 +512,8 @@
         );
 
         filtered.forEach(task => {
-            const escapedText = (task.text || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const escapedRemark = (task.remark || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const escapedText = escapeHtml(task.text || "");
+            const escapedRemark = escapeHtml(task.remark || "");
             const row = document.createElement("tr");
             if (task.favorite) {
                 row.classList.add("favorite");
@@ -517,7 +526,7 @@
             row.innerHTML = `
                 <td><input type="text" class="task-text" value="${escapedText}" disabled /></td>
                 <td><input type="text" class="task-remark" value="${escapedRemark}" disabled /></td>
-                <td><span>${task.favorite ? '❤️ ' : ''}${task.status}</span></td>
+                <td><span>${task.favorite ? '❤️ ' : ''}${escapeHtml(task.status)}</span></td>
                 <td>
                     <div class="action-buttons">
                         <button class="unified-button btn-edit" onclick="editTask(${task.id})">✏️ 编辑</button>
@@ -538,9 +547,9 @@
                             : `<button class="unified-button btn-favorite" onclick="toggleFavorite(${task.id})">❤️ 喜欢</button>`
                         }
                         <button class="unified-button btn-preview" onclick="previewTask(${task.id})">🖼️ 预览</button>
-                        <button class="unified-button btn-smart" onclick="smartJump('${escapedText}')">🤖 智能跳转</button>
-                        <button class="unified-button btn-jm" onclick="jumpToJM('${escapedText}')">📘 跳转到JM</button>
-                        <button class="unified-button btn-p" onclick="jumpToP('${escapedText}')">🖼️ 跳转到P站</button>
+                        <button class="unified-button btn-smart" onclick="smartJump(${JSON.stringify(task.text)})">🤖 智能跳转</button>
+                        <button class="unified-button btn-jm" onclick="jumpToJM(${JSON.stringify(task.text)})">📘 跳转到JM</button>
+                        <button class="unified-button btn-p" onclick="jumpToP(${JSON.stringify(task.text)})">🖼️ 跳转到P站</button>
                     </div>
                 </td>
             `;
