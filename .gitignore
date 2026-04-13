@@ -1,44 +1,73 @@
+# Examples
+
+## Example 1:
+
+**Input:**
+```
+### Added files:
+[src/main.py, README.md, config.json]
+
+### Deleted files:
+[old/unused.py]
+
+### Modified files:
+[utils.py]
+
+### Current .gitignore Content
+(empty)
+```
+
+**Expected Output:**
+```
+(empty — output nothing)
+```
+
+## Example 2 (Project with artifacts):
+
+**Input:**
+```
+### Added files:
+[pycache/main.cpython-310.pyc, dist/app.js, .env.local, .vscode/settings.json]
+
+### Deleted files:
+[]
+
+### Modified files:
+[]
+
+### Current .gitignore Content
+*.log
+```
+
+**Expected Output:**
+```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
 *.o
 *.obj
-*.class
-*.exe
-*.dll
-*.so
-*.a
-*.out
-
-# Dependencies
-node_modules/
-venv/
-.venv/
-.env
-.env.local
-.env.*
-
-# Build directories
 dist/
 build/
-target/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+
+# Logs and temp files
 *.log
 *.tmp
 *.swp
+
+# Environment
+.env
+.env.local
+.env.*
 
 # Editors
 .vscode/
 .idea/
 
-# System files
-.DS_Store
-Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Python specific
-.mypy_cache/
-.pytest_cache/
+# Original rules preserved
+*.log
+```

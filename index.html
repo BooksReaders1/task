@@ -151,9 +151,61 @@
                 font-size: 11px !important;
             }
         }
+
+        /* Toast 通知样式 */
+        #toast-container {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 90%;
+            width: auto;
+        }
+
+        .toast {
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background-color: rgba(40, 167, 69, 0.9);
+        }
+
+        .toast.error {
+            background-color: rgba(220, 53, 69, 0.9);
+        }
+
+        .toast.warning {
+            background-color: rgba(255, 193, 7, 0.9);
+            color: black;
+        }
+
+        .toast.info {
+            background-color: rgba(23, 162, 184, 0.9);
+        }
     </style>
 </head>
 <body>
+
+<!-- Toast 容器 -->
+<div id="toast-container"></div>
 
 <h1>任务管理</h1>
 
@@ -273,19 +325,25 @@
     }
 
     // ========== 配置管理（更新全局变量）==========
-    function saveJMConfig(url) {
-        if (!url?.trim()) return alert("URL 不能为空");
-        if (!url.match(/\/\d+\/?$/)) return alert("URL 中未找到作品 ID");
+    async function saveJMConfig(url) {
+        if (!url?.trim()) {
+            showToast("URL 不能为空", "error");
+            return;
+        }
+        if (!url.match(/\/\d+\/?$/)) {
+            showToast("URL 中未找到作品 ID", "error");
+            return;
+        }
         db.transaction(["configs"], "readwrite").objectStore("configs").put({ id: "jmUrl", value: url.trim() });
         gJMTemplate = url.trim(); // ✅ 同步更新全局变量
-        alert("JM 跳转配置已保存");
+        showToast("JM 跳转配置已保存", "success");
     }
 
-    function resetJMConfigToDefault() {
-        if (!confirm("确定恢复 JM 跳转为默认地址？")) return;
+    async function resetJMConfigToDefault() {
+        if (!await showConfirm("确定恢复 JM 跳转为默认地址？")) return;
         db.transaction(["configs"], "readwrite").objectStore("configs").delete("jmUrl");
         gJMTemplate = "https://jm18c-uoi.net/album/"; // ✅ 重置全局变量
-        alert("已恢复默认 JM 地址");
+        showToast("已恢复默认 JM 地址", "success");
     }
 
     function savePreviewApiConfig(url) {
@@ -294,8 +352,8 @@
         gPreviewApiTemplate = url.trim();
     }
 
-    function resetPreviewApiToDefault() {
-        if (!confirm("确定要恢复预览图 API 为默认值吗？\n默认地址：https://cdn-msp.jm18c-uoi.net/media/albums/")) {
+    async function resetPreviewApiToDefault() {
+        if (!await showConfirm("确定要恢复预览图 API 为默认值吗？\n默认地址：https://cdn-msp.jm18c-uoi.net/media/albums/")) {
             return;
         }
         const txConfig = db.transaction(["configs"], "readwrite");
@@ -314,19 +372,19 @@
                 }
                 cursor.continue();
             } else {
-                alert("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！");
+                showToast("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！", "success");
                 loadTasksFromIndexedDB();
             }
         };
     }
 
-    function openJMConfig() {
-        const choice = prompt("配置类型：\n1. JM 跳转地址\n2. 预览图 API\n输入 1 或 2：", "1");
+    async function openJMConfig() {
+        const choice = await showPrompt("配置类型：\n1. JM 跳转地址\n2. 预览图 API\n输入 1 或 2：", "1");
         if (choice === "1") {
-            const input = prompt("JM 作品链接：", gJMTemplate);
+            const input = await showPrompt("JM 作品链接：", gJMTemplate);
             if (input !== null) saveJMConfig(input);
         } else if (choice === "2") {
-            const input = prompt("预览图 API 地址：", gPreviewApiTemplate);
+            const input = await showPrompt("预览图 API 地址：", gPreviewApiTemplate);
             if (input !== null) savePreviewApiConfig(input);
         }
     }
@@ -337,6 +395,120 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ========== Toast 通知函数 ==========
+    function showToast(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        
+        // 触发动画
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // 自动移除
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (container.contains(toast)) {
+                    container.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
+
+    // ========== 确认对话框（替代 confirm）==========
+    function showConfirm(message) {
+        return new Promise(resolve => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast warning';
+            toast.style.pointerEvents = 'auto';
+            toast.style.cursor = 'pointer';
+            toast.innerHTML = `<span>${escapeHtml(message)}</span><br><button style="margin-top:8px;padding:4px 12px;border:none;border-radius:4px;background:#28a745;color:white;cursor:pointer;margin-right:8px;">确定</button><button style="margin-top:8px;padding:4px 12px;border:none;border-radius:4px;background:#dc3545;color:white;cursor:pointer;">取消</button>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            const yesBtn = toast.querySelector('button:first-of-type');
+            const noBtn = toast.querySelector('button:last-of-type');
+            
+            const cleanup = () => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (container.contains(toast)) {
+                        container.removeChild(toast);
+                    }
+                }, 300);
+            };
+            
+            yesBtn.onclick = () => { cleanup(); resolve(true); };
+            noBtn.onclick = () => { cleanup(); resolve(false); };
+            
+            // 10 秒后自动取消
+            setTimeout(() => {
+                if (container.contains(toast)) {
+                    cleanup();
+                    resolve(false);
+                }
+            }, 10000);
+        });
+    }
+
+    // ========== 输入对话框（替代 prompt）==========
+    function showPrompt(message, defaultValue = '') {
+        return new Promise(resolve => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast info';
+            toast.style.pointerEvents = 'auto';
+            toast.style.width = 'auto';
+            toast.style.minWidth = '300px';
+            toast.innerHTML = `<div style="margin-bottom:8px;">${escapeHtml(message)}</div><input type="text" id="prompt-input" value="${escapeHtml(defaultValue)}" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;margin-bottom:8px;"><button style="padding:4px 12px;border:none;border-radius:4px;background:#28a745;color:white;cursor:pointer;margin-right:8px;">确定</button><button style="padding:4px 12px;border:none;border-radius:4px;background:#dc3545;color:white;cursor:pointer;">取消</button>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            const input = toast.querySelector('#prompt-input');
+            const yesBtn = toast.querySelector('button:first-of-type');
+            const noBtn = toast.querySelector('button:last-of-type');
+            
+            const cleanup = () => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (container.contains(toast)) {
+                        container.removeChild(toast);
+                    }
+                }, 300);
+            };
+            
+            const submit = () => {
+                const value = input.value;
+                cleanup();
+                resolve(value);
+            };
+            
+            yesBtn.onclick = submit;
+            noBtn.onclick = () => { cleanup(); resolve(null); };
+            
+            // 支持回车提交
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submit();
+            });
+            
+            // 聚焦输入框
+            setTimeout(() => input.focus(), 100);
+            
+            // 30 秒后自动取消
+            setTimeout(() => {
+                if (container.contains(toast)) {
+                    cleanup();
+                    resolve(null);
+                }
+            }, 30000);
+        });
     }
 
     // ========== 核心逻辑 ==========
@@ -420,7 +592,7 @@
                 updateTaskInDB(taskId, { previewUrl: url });
             }
         }
-        if (!url) return alert("无法生成预览图，请确保任务包含有效作品 ID（5 位以上数字）");
+        if (!url) { showToast("无法生成预览图，请确保任务包含有效作品 ID（5 位以上数字）", "error"); return; }
 
         const modal = document.createElement('div');
         modal.style = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:10000;`;
@@ -443,24 +615,24 @@
     // ========== ✅ 同步跳转函数 ==========
     function jumpToJM(taskText) {
         const num = extractNumber(taskText);
-        if (!num) return alert("未找到有效数字");
+        if (!num) { showToast("未找到有效数字", "error"); return; }
         const base = gJMTemplate.replace(/\/\d+\/?$/, '/');
         const url = `${base}${num}/`;
         const win = window.open(url, '_blank');
         if (!win) {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(url).then(() => {
-                    alert("✅ 链接已复制！请手动打开");
+                    showToast("✅ 链接已复制！请手动打开", "success");
                 });
             } else {
-                alert("弹出窗口被拦截，请手动打开链接");
+                showToast("弹出窗口被拦截，请手动打开链接", "warning");
             }
         }
     }
 
     function smartJump(taskText) {
         const num = extractNumber(taskText);
-        if (!num) return alert("未找到有效数字");
+        if (!num) { showToast("未找到有效数字", "error"); return; }
         const len = num.length;
         if (len >= 5 && len <= 8) {
             const base = gJMTemplate.replace(/\/\d+\/?$/, '/');
@@ -469,7 +641,7 @@
             if (!win) {
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(url).then(() => {
-                        alert("✅ JM链接已复制！请手动打开");
+                        showToast("✅ JM 链接已复制！请手动打开", "success");
                     });
                 }
             }
@@ -479,23 +651,23 @@
             if (!win) {
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(num).then(() => {
-                        alert("✅ 作品ID已复制！请在P站查询页粘贴");
+                        showToast("✅ 作品 ID 已复制！请在 P 站查询页粘贴", "success");
                     });
                 }
             }
         } else {
-            alert("数字位数不符合跳转规则（需5位及以上）");
+            showToast("数字位数不符合跳转规则（需 5 位及以上）", "error");
         }
     }
 
     function jumpToP(taskText) {
         const num = extractNumber(taskText);
-        if (!num) return alert("未找到有效数字");
+        if (!num) { showToast("未找到有效数字", "error"); return; }
         const win = window.open('https://booksreaders1.github.io/', '_blank');
         if (!win) {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(num).then(() => {
-                    alert("✅ 作品ID已复制！请在P站查询页粘贴");
+                    showToast("✅ 作品 ID 已复制！请在 P 站查询页粘贴", "success");
                 });
             }
         }
@@ -558,8 +730,11 @@
     }
 
     // ========== 任务操作（略）==========
-    function deleteTask(id) {
-        if (!confirm("确定删除？")) return;
+    async function deleteTask(id) {
+        if (!await showConfirm("确定删除？")) {
+            showToast("已取消删除", "info");
+            return;
+        }
         db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = loadTasksFromIndexedDB;
     }
 
@@ -589,7 +764,7 @@
     function saveTask() {
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
-        if (!text.trim()) return alert("任务文本不能为空");
+        if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
         const matches = [...text.matchAll(/(\d{9})/g)];
         if (matches.length > 0) {
             let start = 0, count = 1;
@@ -686,11 +861,11 @@
     async function pasteFromClipboard() {
         try {
             const text = await navigator.clipboard.readText();
-            if (!text.trim()) return alert("剪贴板为空");
+            if (!text.trim()) { showToast("剪贴板为空", "warning"); return; }
             document.getElementById('task-text').value = text;
             saveTask();
         } catch (err) {
-            alert('无法读取剪贴板，请在安全环境（HTTPS/localhost）中使用');
+            showToast("无法读取剪贴板，请在安全环境（HTTPS/localhost）中使用", "error");
         }
     }
 
