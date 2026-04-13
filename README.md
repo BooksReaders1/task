@@ -155,7 +155,19 @@ if (作品 ID 长度 >= 5 && <= 8) {
 
 ## 📝 更新日志
 
-============= 2026-04-13 12:00:00 commit current : **Redesign view switch button with simplified UI** ==========
+============= 2026-04-13 07:48:06 commit current : **Fix README log logic and update view toggle UI** ==========
+
+<center>修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称</center>
+
+========== ==== commit end =================
+
+============= 2026-04-13 07:35:40 : **Fix README log logic and update view toggle UI** ==========
+
+<center>修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称</center>
+
+========== ==== commit end =================
+
+============= 2026-04-13 12:00:00 : **Redesign view switch button with simplified UI** ==========
 
 <center>重构视图切换区域：按钮独立成行位于统计卡片上方，采用简洁样式仅显示 Emoji+ 视图名称（🔄 状态视图/🌐 来源视图），优化移动端响应式适配</center>
 
