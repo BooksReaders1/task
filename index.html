@@ -588,7 +588,8 @@
     <button class="side-menu-item" onclick="resetJMConfigToDefault()">🔄 恢复默认 JM</button>
     <button class="side-menu-item" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
     <div class="side-menu-divider"></div>
-    <button class="side-menu-item" onclick="exportData()">📤 导出数据</button>
+    <button class="side-menu-item" onclick="exportData()">📤 导出数据 (文件)</button>
+    <button class="side-menu-item" onclick="exportDataToClipboard()">📤 导出数据 (粘贴板)</button>
     <button class="side-menu-item" onclick="importData()">📥 导入数据 (文件)</button>
     <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
@@ -1524,6 +1525,32 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 resolve(true);
+            };
+        });
+    }
+
+    // ========== 仅导出数据到剪贴板（不生成文件）==========
+    async function exportDataToClipboard() {
+        return new Promise((resolve) => {
+            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+            req.onsuccess = () => {
+                const tasks = req.result;
+                const exportData = {
+                    version: 1,
+                    exportDate: new Date().toISOString(),
+                    tasks: tasks
+                };
+                const jsonStr = JSON.stringify(exportData, null, 2);
+                
+                // 仅复制到剪贴板，不生成文件
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+                    resolve(true);
+                }).catch(err => {
+                    console.error("复制到剪贴板失败", err);
+                    showToast("复制到剪贴板失败，请手动操作", "error");
+                    resolve(false);
+                });
             };
         });
     }
