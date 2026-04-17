@@ -505,12 +505,93 @@
         .toast.info {
             background-color: rgba(23, 162, 184, 0.9);
         }
+
+        /* 左侧滑出菜单样式 */
+        .menu-toggle-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
+        }
+
+        .menu-toggle-btn:hover {
+            background-color: #444;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -220px;
+            width: 200px;
+            height: 100vh;
+            background-color: #1a1a1a;
+            z-index: 999;
+            transition: left 0.3s ease;
+            padding-top: 70px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .side-menu-item {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            margin: 4px 0;
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .side-menu-item:hover {
+            background-color: #333;
+        }
+
+        .side-menu-divider {
+            height: 1px;
+            background-color: #333;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
 
 <!-- Toast 容器 -->
 <div id="toast-container"></div>
+
+<!-- 左侧菜单切换按钮 -->
+<button class="menu-toggle-btn" onclick="toggleSideMenu()" title="菜单">☰</button>
+
+<!-- 左侧滑出菜单 -->
+<div id="side-menu" class="side-menu">
+    <button class="side-menu-item" onclick="openJMConfig()">⚙️ 配置 JM</button>
+    <button class="side-menu-item" onclick="resetJMConfigToDefault()">🔄 恢复默认 JM</button>
+    <button class="side-menu-item" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" onclick="exportData()">📤 导出数据</button>
+    <button class="side-menu-item" onclick="importData()">📥 导入数据</button>
+    <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
+</div>
 
 <h1>任务管理</h1>
 
@@ -519,12 +600,6 @@
     <input type="text" id="task-remark" placeholder="输入备注"/>
     <button class="unified-button btn-save-new" onclick="saveTask()">✅ 保存任务</button>
     <button class="unified-button btn-paste" onclick="pasteFromClipboard()">📋 粘贴</button>
-    <button class="unified-button" style="background-color:#9c27b0; color:white;" onclick="openJMConfig()">⚙️ 配置 JM</button>
-    <button class="unified-button" style="background-color:#607d8b; color:white;" onclick="resetJMConfigToDefault()">🔄 恢复默认 JM</button>
-    <button class="unified-button" style="background-color:#455a64; color:white;" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
-    <button class="unified-button" style="background-color:#ff9800; color:white;" onclick="exportData()">📤 导出数据</button>
-    <button class="unified-button" style="background-color:#00bcd4; color:white;" onclick="importData()">📥 导入数据</button>
-    <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
 </div>
 
 <div class="filter-section">
@@ -1373,6 +1448,23 @@
         clearFilters();
     }
 
+    // 切换左侧菜单
+    function toggleSideMenu() {
+        const menu = document.getElementById('side-menu');
+        menu.classList.toggle('open');
+    }
+
+    // 点击菜单外部关闭菜单
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('side-menu');
+        const toggleBtn = document.querySelector('.menu-toggle-btn');
+        if (menu && menu.classList.contains('open') && 
+            !menu.contains(event.target) && 
+            !toggleBtn.contains(event.target)) {
+            menu.classList.remove('open');
+        }
+    });
+
     // 按来源筛选
     function filterBySource(sourceType) {
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
@@ -1412,6 +1504,15 @@
                     tasks: tasks
                 };
                 const jsonStr = JSON.stringify(exportData, null, 2);
+                
+                // 复制到剪贴板
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+                }).catch(err => {
+                    console.warn("复制到剪贴板失败", err);
+                });
+                
+                // 同时下载文件
                 const blob = new Blob([jsonStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1421,7 +1522,6 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast(`成功导出 ${tasks.length} 条任务数据`, "success");
                 resolve(true);
             };
         });
