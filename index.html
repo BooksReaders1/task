@@ -589,7 +589,8 @@
     <button class="side-menu-item" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" onclick="exportData()">📤 导出数据</button>
-    <button class="side-menu-item" onclick="importData()">📥 导入数据</button>
+    <button class="side-menu-item" onclick="importData()">📥 导入数据 (文件)</button>
+    <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
 </div>
 
@@ -1530,6 +1531,62 @@
     // ========== 数据导入功能 ==========
     function importData() {
         document.getElementById('import-file').click();
+    }
+
+    // ========== 通过粘贴 JSON 文本导入数据 ==========
+    async function importDataFromText() {
+        const jsonText = await showPrompt("请粘贴 JSON 格式的数据：", "");
+        if (!jsonText || jsonText.trim() === "") {
+            return;
+        }
+
+        // 先检查当前是否有数据
+        const currentTasks = await new Promise((resolve) => {
+            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+            req.onsuccess = () => resolve(req.result);
+        });
+
+        if (currentTasks.length > 0) {
+            showToast("导入失败：当前数据库已有数据，仅允许在空数据库中导入", "error");
+            return;
+        }
+
+        try {
+            const data = JSON.parse(jsonText);
+            
+            // 校验数据格式
+            if (!data.tasks || !Array.isArray(data.tasks)) {
+                throw new Error("无效的导入文件格式：缺少 tasks 数组");
+            }
+
+            // 导入数据
+            const tx = db.transaction([storeName], "readwrite");
+            const store = tx.objectStore(storeName);
+            
+            let importedCount = 0;
+            for (const task of data.tasks) {
+                // 确保必要字段存在
+                if (!task.text) continue;
+                if (task.favorite === undefined) task.favorite = false;
+                if (!task.status) task.status = "未使用";
+                if (!task.createdAt) task.createdAt = Date.now();
+                
+                store.add(task);
+                importedCount++;
+            }
+
+            tx.oncomplete = () => {
+                loadTasksFromIndexedDB();
+                showToast(`成功导入 ${importedCount} 条任务数据`, "success");
+            };
+
+            tx.onerror = () => {
+                showToast("导入过程中发生错误", "error");
+            };
+
+        } catch (err) {
+            showToast(`导入失败：${err.message}`, "error");
+        }
     }
 
     async function handleFileImport(event) {
