@@ -1149,6 +1149,12 @@
         }
     }
 
+    // ========== 本地预览（JM 专用）==========
+    function openLocalPreview(id) {
+        const url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+        window.open(url, '_blank');
+    }
+
     // ========== UI 渲染（改良版方案一：卡片式布局）==========
     let currentMobileTaskId = null; // 当前移动端操作的任务 ID
 
@@ -1177,6 +1183,11 @@
             const card = document.createElement("div");
             card.className = "task-card";
             
+            // 判断是否为 JM 类型并获取 ID（使用已有的 getSourceType 逻辑）
+            const sourceType = getSourceType(task.text || "");
+            const isJM = (sourceType === 'jm');
+            const num = isJM ? extractNumber(task.text || "") : null;
+            
             // 状态样式类
             let statusClass = "status-pending";
             if (task.status === "已完成") statusClass = "status-completed";
@@ -1185,6 +1196,9 @@
             // 收藏状态
             const favActive = task.favorite ? "active" : "";
             const favIcon = task.favorite ? "⭐" : "☆";
+
+            // 生成本地预览按钮 HTML（仅 JM 显示）
+            const localPreviewBtn = isJM ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}')" title="本地预览">📖</button>` : '';
 
             card.innerHTML = `
                 <div class="task-card-header">
@@ -1201,6 +1215,7 @@
                     <div class="task-card-primary-actions">
                         <button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>
                         <button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>
+                        ${localPreviewBtn}
                     </div>
                     <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
                     <div class="task-card-more-menu" id="more-menu-${task.id}">
