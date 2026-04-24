@@ -1575,71 +1575,62 @@
 
     // ========== 数据导出功能 ==========
     async function exportData() {
-        return new Promise((resolve) => {
-            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
-            req.onsuccess = () => {
-                const tasks = req.result;
-                const exportData = {
-                    version: 1,
-                    exportDate: new Date().toISOString(),
-                    tasks: tasks
-                };
-                const jsonStr = JSON.stringify(exportData, null, 2);
-                
-                // 复制到剪贴板
-                navigator.clipboard.writeText(jsonStr).then(() => {
-                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
-                }).catch(err => {
-                    console.warn("复制到剪贴板失败", err);
-                });
-                
-                // 同时下载文件
-                const blob = new Blob([jsonStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `task_backup_${new Date().toISOString().slice(0,10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                resolve(true);
-            };
+        // ✅ 从缓存中同步获取数据
+        const tasks = gCachedTasks;
+        const exportData = {
+            version: 1,
+            exportDate: new Date().toISOString(),
+            tasks: tasks
+        };
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+        }).catch(err => {
+            console.warn("复制到剪贴板失败", err);
         });
+        
+        // 同时下载文件
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `task_backup_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return true;
     }
 
     // ========== 仅导出数据到剪贴板（不生成文件）==========
     async function exportDataToClipboard() {
-        return new Promise((resolve) => {
-            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
-            req.onsuccess = () => {
-                const tasks = req.result;
-                const exportData = {
-                    version: 1,
-                    exportDate: new Date().toISOString(),
-                    tasks: tasks
-                };
-                const jsonStr = JSON.stringify(exportData, null, 2);
-                
-                // 仅复制到剪贴板，不生成文件
-                // 优先使用现代 API，失败时使用 execCommand 作为后备方案
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(jsonStr).then(() => {
-                        showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
-                        resolve(true);
-                    }).catch(err => {
-                        console.error("复制到剪贴板失败 (Modern API)", err);
-                        // 如果现代 API 失败，尝试使用 execCommand 作为后备方案
-                        copyToClipboardFallback(jsonStr) ? resolve(true) : resolve(false);
-                    });
-                } else {
-                    // 浏览器不支持 navigator.clipboard，使用 execCommand
-                    if (!copyToClipboardFallback(jsonStr)) {
-                        resolve(false);
-                    }
-                }
-            };
-        });
+        // ✅ 从缓存中同步获取数据
+        const tasks = gCachedTasks;
+        const exportData = {
+            version: 1,
+            exportDate: new Date().toISOString(),
+            tasks: tasks
+        };
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        
+        // 仅复制到剪贴板，不生成文件
+        // 优先使用现代 API，失败时使用 execCommand 作为后备方案
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+                await navigator.clipboard.writeText(jsonStr);
+                showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+                return true;
+            } catch (err) {
+                console.error("复制到剪贴板失败 (Modern API)", err);
+                // 如果现代 API 失败，尝试使用 execCommand 作为后备方案
+                return copyToClipboardFallback(jsonStr);
+            }
+        } else {
+            // 浏览器不支持 navigator.clipboard，使用 execCommand
+            return copyToClipboardFallback(jsonStr);
+        }
     }
     
     // 使用 execCommand 的后备剪贴板复制函数
