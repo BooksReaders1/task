@@ -951,19 +951,25 @@
         if (previewUrl) task.previewUrl = previewUrl;
         const tx = db.transaction([storeName], "readwrite");
         tx.objectStore(storeName).add(task).onsuccess = () => {
-            loadTasksFromIndexedDB();
+            applyCurrentFilter();
             clearTaskInputs();
         };
     }
 
     function updateTaskInDB(taskId, updates) {
-        const tx = db.transaction([storeName], "readwrite");
-        const req = tx.objectStore(storeName).get(taskId);
-        req.onsuccess = () => {
-            const task = req.result;
-            Object.assign(task, updates);
-            tx.objectStore(storeName).put(task);
-        };
+        return new Promise((resolve) => {
+            const tx = db.transaction([storeName], "readwrite");
+            const req = tx.objectStore(storeName).get(taskId);
+            req.onsuccess = () => {
+                const task = req.result;
+                Object.assign(task, updates);
+                tx.objectStore(storeName).put(task);
+                tx.oncomplete = () => {
+                    applyCurrentFilter();
+                    resolve();
+                };
+            };
+        });
     }
 
     async function loadTasksFromIndexedDB() {
@@ -1281,7 +1287,9 @@
             const statusCycle = ["未使用", "已完成", "已失效"];
             const currentIndex = statusCycle.indexOf(task.status);
             task.status = statusCycle[(currentIndex + 1) % statusCycle.length];
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                applyCurrentFilter();
+            };
         };
     }
 
@@ -1367,7 +1375,9 @@
             showToast("已取消删除", "info");
             return;
         }
-        db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = loadTasksFromIndexedDB;
+        db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = () => {
+            applyCurrentFilter();
+        };
     }
 
     function toggleFavorite(id) {
@@ -1375,7 +1385,9 @@
         req.onsuccess = () => {
             const task = req.result;
             task.favorite = !task.favorite;
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                applyCurrentFilter();
+            };
         };
     }
 
@@ -1389,26 +1401,30 @@
         req.onsuccess = () => {
             const task = req.result;
             task.status = status;
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                // 更新后重新应用当前筛选条件
+                applyCurrentFilter();
+            };
         };
+    }
+
+    function applyCurrentFilter() {
+        if (currentFilter.type === 'status') {
+            filterByStatus(currentFilter.value);
+        } else if (currentFilter.type === 'favorite') {
+            filterByFavorite();
+        } else if (currentFilter.type === 'source') {
+            filterBySource(currentFilter.value);
+        } else {
+            loadTasksFromIndexedDB();
+        }
     }
 
     function saveTask() {
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
         if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
-        const matches = [...text.matchAll(/(\d{9})/g)];
-        if (matches.length > 0) {
-            let start = 0, count = 1;
-            matches.forEach(m => {
-                const newTxt = text.slice(start, m.index) + m[0];
-                addTaskToIndexedDB({ text: newTxt, remark: remark + count, status: "未使用", createdAt: Date.now() });
-                count++;
-                start = m.index + m[0].length;
-            });
-        } else {
-            addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
-        }
+        addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
     }
 
     function clearTaskInputs() {
@@ -1432,7 +1448,11 @@
         loadTasksFromIndexedDB();
     }
 
+    // 全局筛选状态变量
+    let currentFilter = { type: null, value: null }; // type: 'status', 'favorite', 'source'
+
     function clearFilters() {
+        currentFilter = { type: null, value: null };
         document.getElementById("search").value = "";
         loadTasksFromIndexedDB();
     }
@@ -1443,6 +1463,7 @@
     }
 
     function filterByStatus(status) {
+        currentFilter = { type: 'status', value: status };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
@@ -1454,6 +1475,7 @@
     }
 
     function filterByFavorite() {
+        currentFilter = { type: 'favorite', value: true };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
@@ -1505,6 +1527,7 @@
 
     // 按来源筛选
     function filterBySource(sourceType) {
+        currentFilter = { type: 'source', value: sourceType };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
