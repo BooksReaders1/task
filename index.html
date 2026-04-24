@@ -1135,12 +1135,13 @@
                 }
             }
         } else if (len >= 9) {
-            // P站：跳转到主页（因不支持URL参数）
-            const win = window.open('https://booksreaders1.github.io/', '_blank');
+            // P 站：跳转到主页并传入 pid 参数
+            const url = `https://booksreaders1.github.io/?pid=${num}`;
+            const win = window.open(url, '_blank');
             if (!win) {
                 if (navigator.clipboard) {
-                    navigator.clipboard.writeText(num).then(() => {
-                        showToast("✅ 作品 ID 已复制！请在 P 站查询页粘贴", "success");
+                    navigator.clipboard.writeText(url).then(() => {
+                        showToast("✅ P 站链接已复制！请手动打开", "success");
                     });
                 }
             }
@@ -1152,11 +1153,12 @@
     function jumpToP(taskText) {
         const num = extractNumber(taskText);
         if (!num) { showToast("未找到有效数字", "error"); return; }
-        const win = window.open('https://booksreaders1.github.io/', '_blank');
+        const url = `https://booksreaders1.github.io/?pid=${num}`;
+        const win = window.open(url, '_blank');
         if (!win) {
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(num).then(() => {
-                    showToast("✅ 作品 ID 已复制！请在 P 站查询页粘贴", "success");
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast("✅ P 站链接已复制！请手动打开", "success");
                 });
             }
         }
