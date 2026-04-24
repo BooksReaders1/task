@@ -1602,16 +1602,65 @@
                 const jsonStr = JSON.stringify(exportData, null, 2);
                 
                 // 仅复制到剪贴板，不生成文件
-                navigator.clipboard.writeText(jsonStr).then(() => {
-                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
-                    resolve(true);
-                }).catch(err => {
-                    console.error("复制到剪贴板失败", err);
-                    showToast("复制到剪贴板失败，请手动操作", "error");
-                    resolve(false);
-                });
+                // 优先使用现代 API，失败时使用 execCommand 作为后备方案
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(jsonStr).then(() => {
+                        showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+                        resolve(true);
+                    }).catch(err => {
+                        console.error("复制到剪贴板失败 (Modern API)", err);
+                        // 如果现代 API 失败，尝试使用 execCommand 作为后备方案
+                        copyToClipboardFallback(jsonStr) ? resolve(true) : resolve(false);
+                    });
+                } else {
+                    // 浏览器不支持 navigator.clipboard，使用 execCommand
+                    if (!copyToClipboardFallback(jsonStr)) {
+                        resolve(false);
+                    }
+                }
             };
         });
+    }
+    
+    // 使用 execCommand 的后备剪贴板复制函数
+    function copyToClipboardFallback(text) {
+        try {
+            // 创建一个隐藏的 textarea 元素来承载要复制的文本
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = '0';
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+            textArea.style.opacity = '0';
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                const taskCount = JSON.parse(text).tasks?.length || 0;
+                showToast(`已复制 ${taskCount} 条任务数据到剪贴板`, "success");
+                return true;
+            } else {
+                console.error("execCommand('copy') 失败");
+                showToast("复制到剪贴板失败，请手动操作", "error");
+                return false;
+            }
+        } catch (err) {
+            console.error("复制到剪贴板失败 (Fallback)", err);
+            showToast("复制到剪贴板失败，请手动操作", "error");
+            return false;
+        }
     }
 
     // ========== 数据导入功能 ==========
