@@ -1035,6 +1035,13 @@
     async function previewTask(taskId) {
         const req = db.transaction([storeName], "readonly").objectStore(storeName).get(taskId);
         const task = await new Promise(r => req.onsuccess = () => r(req.result));
+        
+        // 仅 JM 类型支持预览（按钮已隐藏，此检查作为额外防护）
+        const sourceType = getSourceType(task.text);
+        if (sourceType !== 'jm') {
+            return;
+        }
+        
         let url = task.previewUrl;
         if (!url) {
             url = generatePreviewUrl(task.text); // 同步
@@ -1107,6 +1114,12 @@
     }
 
     function smartJump(taskText) {
+        // 仅 pixiv 或 JM 类型支持智能跳转（按钮已隐藏，此检查作为额外防护）
+        const sourceType = getSourceType(taskText);
+        if (sourceType !== 'pixiv' && sourceType !== 'jm') {
+            return;
+        }
+        
         const num = extractNumber(taskText);
         if (!num) { showToast("未找到有效数字", "error"); return; }
         const len = num.length;
@@ -1199,6 +1212,12 @@
 
             // 生成本地预览按钮 HTML（仅 JM 显示）
             const localPreviewBtn = isJM ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}')" title="本地预览">📖</button>` : '';
+            
+            // 生成预览按钮 HTML（仅 JM 类型显示）
+            const previewBtn = (sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
+            
+            // 生成智能跳转按钮 HTML（仅 pixiv 或 JM 类型显示）
+            const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
 
             card.innerHTML = `
                 <div class="task-card-header">
@@ -1213,8 +1232,8 @@
                 </div>
                 <div class="task-card-actions">
                     <div class="task-card-primary-actions">
-                        <button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>
-                        <button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>
+                        ${previewBtn}
+                        ${smartJumpBtn}
                         ${localPreviewBtn}
                     </div>
                     <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
