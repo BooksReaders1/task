@@ -689,6 +689,9 @@
     // ✅ 全局配置缓存（关键！）
     let gJMTemplate = "https://jm18c-uoi.net/album/";
     let gPreviewApiTemplate = "https://cdn-msp.jm18c-uoi.net/media/albums/";
+    
+    // ✅ 任务数据缓存（用于同步复制，避免 iOS 手势上下文丢失）
+    let gCachedTasks = [];
 
     const request = indexedDB.open(dbName, 4);
 
@@ -979,6 +982,8 @@
                 const tasks = req.result;
                 tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
+                // ✅ 缓存数据，用于同步复制
+                gCachedTasks = [...tasks];
                 displayTasks(tasks);
                 updateTaskStats();
                 resolve(true);
@@ -1188,6 +1193,9 @@
             task.remark.toLowerCase().includes(searchTerm)
         );
 
+        // ✅ 缓存过滤后的数据，用于同步复制
+        gCachedTasks = [...filtered];
+
         if (filtered.length === 0) {
             container.innerHTML = `
                 <div class="empty-state" style="grid-column: 1/-1;">
@@ -1293,19 +1301,25 @@
         };
     }
 
-    // 复制任务文本
+    // 复制任务文本（使用缓存数据，避免异步查询导致 iOS 手势上下文丢失）
     function copyTaskText(id) {
-        const req = db.transaction([storeName], "readwrite").objectStore(storeName).get(id);
-        req.onsuccess = () => {
-            const task = req.result;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(task.text).then(() => {
-                    showToast("✅ 已复制到剪贴板", "success");
-                });
-            } else {
-                showToast("❌ 浏览器不支持剪贴板 API", "error");
-            }
-        };
+        // ✅ 从缓存中同步获取数据
+        const task = gCachedTasks.find(t => t.id === id);
+        if (!task) {
+            showToast("❌ 任务未找到", "error");
+            return;
+        }
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(task.text).then(() => {
+                showToast("✅ 已复制到剪贴板", "success");
+            }).catch(err => {
+                console.error("复制失败", err);
+                showToast("❌ 复制失败，请手动操作", "error");
+            });
+        } else {
+            showToast("❌ 浏览器不支持剪贴板 API", "error");
+        }
     }
 
     // 卡片内编辑任务
@@ -1470,6 +1484,8 @@
             tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
             tasks = status ? tasks.filter(t => t.status === status) : tasks;
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
@@ -1482,6 +1498,8 @@
             tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
             tasks = tasks.filter(t => t.favorite);
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
@@ -1538,6 +1556,8 @@
             }
             
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
