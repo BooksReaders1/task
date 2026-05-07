@@ -15,7 +15,7 @@
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
-            padding-top: env(safe-area-inset-top, 20px);
+            padding-top: max(60px, env(safe-area-inset-top, 60px));
             padding-bottom: env(safe-area-inset-bottom, 20px);
             background-color: #fafafa;
             margin: 0;
@@ -25,7 +25,7 @@
         /* iOS/iPadOS 沉浸式体验优化 */
         @supports (-webkit-touch-callout: none) {
             body {
-                padding-top: max(20px, env(safe-area-inset-top));
+                padding-top: max(60px, env(safe-area-inset-top));
                 padding-bottom: max(20px, env(safe-area-inset-bottom));
             }
         }
