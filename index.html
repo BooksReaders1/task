@@ -1075,6 +1075,10 @@
                 <div style="margin-top:20px;position:relative;">
                     <img src="${safeUrl}" 
                          style="max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:4px;"
+                         onload="
+                            const container = this.parentElement;
+                            container.querySelector('.loading-spinner').style.display='none';
+                         "
                          onerror="
                             this.style.display='none';
                             const container = this.parentElement;
