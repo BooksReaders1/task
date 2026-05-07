@@ -2,7 +2,7 @@
   "name": "任务管理",
   "short_name": "任务管理",
   "description": "任务管理应用，支持 JM 类型任务随机抽取",
-  "start_url": "./index.html",
+  "start_url": "/task/",
   "display": "standalone",
   "background_color": "#fafafa",
   "theme_color": "#fafafa",
