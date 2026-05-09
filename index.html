@@ -635,7 +635,7 @@
     <!-- 视图切换按钮 - 独立一行 -->
     <div class="view-switcher-row" style="justify-content: center; align-items: center;">
         <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()" style="width: auto; max-width: none;">
-            🔄 状态视图
+            🌐 来源视图
         </button>
     </div>
     
@@ -1602,12 +1602,12 @@
         if (currentViewMode === 'status') {
             statusCards.style.display = 'none';
             sourceCards.style.display = 'grid';
-            toggleBtn.innerHTML = '🌐 来源视图';
+            toggleBtn.innerHTML = '🔄 状态视图';
             currentViewMode = 'source';
         } else {
             statusCards.style.display = 'grid';
             sourceCards.style.display = 'none';
-            toggleBtn.innerHTML = '🔄 状态视图';
+            toggleBtn.innerHTML = '🌐 来源视图';
             currentViewMode = 'status';
         }
         // 重置筛选
