@@ -640,7 +640,7 @@
     </div>
     
     <!-- 状态视图卡片 -->
-    <div id="status-filter-cards" class="stats-card-group">
+    <div id="status-filter-cards" class="stats-card-group" style="display:none;">
         <div class="stats-card all" onclick="filterByStatus('')">
             <h3>全部任务</h3>
             <span id="total-tasks">0</span>
@@ -664,7 +664,7 @@
     </div>
     
     <!-- 来源视图卡片 -->
-    <div id="source-filter-cards" class="stats-card-group" style="display:none;">
+    <div id="source-filter-cards" class="stats-card-group">
         <div class="stats-card all" onclick="filterBySource('all')" style="background-color:#6b7280;">
             <h3>全部</h3>
             <span id="source-all-count">0</span>
@@ -1593,7 +1593,7 @@
     }
 
     // 切换视图模式
-    let currentViewMode = 'status'; // 'status' or 'source'
+    let currentViewMode = 'source'; // 'status' or 'source'
     function toggleFilterView() {
         const statusCards = document.getElementById('status-filter-cards');
         const sourceCards = document.getElementById('source-filter-cards');
