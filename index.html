@@ -975,9 +975,9 @@
         const num = extractNumber(taskText);
         if (!num || num.length < 5) return null;
         
-        // Pixiv 类型：使用 pixiv 预览地址
+        // Pixiv 类型：使用 pixiv.re 获取第一张图片
         if (sourceType === 'pixiv') {
-            return `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
+            return `https://pixiv.re/${num}.jpg`;
         }
         
         // JM 类型：使用 JM 预览 API
@@ -1090,6 +1090,7 @@
             return;
         }
         
+        // 获取预览 URL（Pixiv 使用 pixiv.re，JM 使用 JM API）
         let url = task.previewUrl;
         if (!url) {
             url = generatePreviewUrl(task.text); // 同步
