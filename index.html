@@ -701,7 +701,6 @@
     <button class="mobile-action-close" id="mobile-action-close">关闭</button>
 </div>
 
-<script src="imageProcessor.js"></script>
 <script>
     let db;
     const dbName = "taskDB";
@@ -1141,24 +1140,6 @@
         `;
         modal.querySelector('button').onclick = () => document.body.removeChild(modal);
         document.body.appendChild(modal);
-
-        // 对于 Pixiv 类型，在模态框显示后异步处理图片（降低清晰度）
-        // 这样不会阻塞模态框的显示，用户能立即看到预览窗口
-        if (sourceType === 'pixiv') {
-            processPreviewImage(url, 'pixiv')
-                .then(processedUrl => {
-                    // 图片处理成功，更新 img 标签的 src
-                    const img = modal.querySelector('img');
-                    if (img) {
-                        img.src = processedUrl;
-                    }
-                })
-                .catch(error => {
-                    // 打印原始错误信息，不要包装
-                    console.warn('Pixiv 图片处理失败，继续使用原图:', error);
-                    // 保持使用原图，不需要额外操作
-                });
-        }
     }
 
     // ========== ✅ 同步跳转函数 ==========
