@@ -810,13 +810,10 @@
             const cursor = event.target.result;
             if (cursor) {
                 const task = cursor.value;
-                if (task.previewUrl) {
-                    delete task.previewUrl;
-                    cursor.update(task);
-                }
+                // ✅ 不再需要清空 previewUrl，因为已改为实时计算
                 cursor.continue();
             } else {
-                showToast("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！", "success");
+                showToast("✅ 预览图配置已恢复默认！现在预览 URL 将实时计算。", "success");
                 loadTasksFromIndexedDB();
             }
         };
@@ -987,8 +984,7 @@
 
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
-        const previewUrl = generatePreviewUrl(task.text); // 同步
-        if (previewUrl) task.previewUrl = previewUrl;
+        // ✅ 不再保存 previewUrl 到数据库，改为实时计算
         const tx = db.transaction([storeName], "readwrite");
         tx.objectStore(storeName).add(task).onsuccess = () => {
             applyCurrentFilter();
@@ -1090,15 +1086,8 @@
             return;
         }
         
-        // 获取预览 URL（Pixiv 使用 pixiv.re，JM 使用 JM API）
-        let url = task.previewUrl;
-        if (!url) {
-            url = generatePreviewUrl(task.text); // 同步
-            if (url) {
-                task.previewUrl = url;
-                updateTaskInDB(taskId, { previewUrl: url });
-            }
-        }
+        // 实时计算预览 URL（不再从数据库读取）
+        let url = generatePreviewUrl(task.text); // 同步
         if (!url) { showToast("无法生成预览图，请确保任务包含有效作品 ID（5 位以上数字）", "error"); return; }
 
         const modal = document.createElement('div');
