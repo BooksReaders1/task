@@ -10,7 +10,8 @@
 async function reduceImageQuality(imageUrl, quality = 0.5, scale = 0.5) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous'; // 允许跨域
+        // 不设置 crossOrigin，因为原图可以正常加载，说明不存在跨域问题
+        // 设置 crossOrigin 反而可能导致 tainted canvas 错误
         
         img.onload = () => {
             try {
@@ -35,12 +36,15 @@ async function reduceImageQuality(imageUrl, quality = 0.5, scale = 0.5) {
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
                 resolve(dataUrl);
             } catch (error) {
+                // 直接抛出原始错误，不要包装
                 reject(error);
             }
         };
         
         img.onerror = (error) => {
-            reject(new Error(`Failed to load image: ${imageUrl}`));
+            // 直接抛出原始错误，不要包装
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            reject(new Error(`Image load failed for ${imageUrl}: ${errorMsg}`));
         };
         
         img.src = imageUrl;
