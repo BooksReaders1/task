@@ -602,9 +602,9 @@
 
 <!-- 左侧滑出菜单 -->
 <div id="side-menu" class="side-menu">
-    <button class="side-menu-item" onclick="openJMConfig()">⚙️ 配置 JM</button>
-    <button class="side-menu-item" onclick="resetJMConfigToDefault()">🔄 恢复默认 JM</button>
-    <button class="side-menu-item" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">⚙️ 配置 JM</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">🔄 恢复默认 JM</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">🔄 恢复默认预览</button>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" onclick="exportData()">📤 导出数据 (文件)</button>
     <button class="side-menu-item" onclick="exportDataToClipboard()">📤 导出数据 (粘贴板)</button>
@@ -620,6 +620,9 @@
     <input type="text" id="task-remark" placeholder="输入备注"/>
     <button class="unified-button btn-save-new" onclick="saveTask()">✅ 保存任务</button>
     <button class="unified-button btn-paste" onclick="pasteFromClipboard()">📋 粘贴</button>
+    <button class="unified-button btn-preview" onclick="randomWork()" title="从 Pixiv 和 JM 中随机抽取一个作品">
+        🎲 随机作品
+    </button>
 </div>
 
 <div class="filter-section">
@@ -630,8 +633,8 @@
 
 <div class="stats-container">
     <!-- 视图切换按钮 - 独立一行 -->
-    <div class="view-switcher-row">
-        <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()">
+    <div class="view-switcher-row" style="justify-content: center; align-items: center;">
+        <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()" style="width: auto; max-width: none;">
             🔄 状态视图
         </button>
     </div>
@@ -778,6 +781,8 @@
         showToast("JM 跳转配置已保存", "success");
     }
 
+    // ========== 配置 JM（功能已屏蔽）==========
+    /*
     async function resetJMConfigToDefault() {
         if (!await showConfirm("确定恢复 JM 跳转为默认地址？")) return;
         db.transaction(["configs"], "readwrite").objectStore("configs").delete("jmUrl");
@@ -827,6 +832,7 @@
             if (input !== null) savePreviewApiConfig(input);
         }
     }
+    */
 
     // ========== 安全工具函数 ==========
     function escapeHtml(text) {
@@ -856,6 +862,11 @@
                 }
             }, 300);
         }, duration);
+    }
+
+    // ========== 功能屏蔽提示 ==========
+    function showDisabledToast() {
+        showToast("功能暂时屏蔽！", "warning");
     }
 
     // ========== 确认对话框（替代 confirm）==========
@@ -960,8 +971,16 @@
 
     // ✅ 使用全局变量，同步生成
     function generatePreviewUrl(taskText) {
+        const sourceType = getSourceType(taskText);
         const num = extractNumber(taskText);
         if (!num || num.length < 5) return null;
+        
+        // Pixiv 类型：使用 pixiv 预览地址
+        if (sourceType === 'pixiv') {
+            return `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
+        }
+        
+        // JM 类型：使用 JM 预览 API
         const base = gPreviewApiTemplate.endsWith('/') ? gPreviewApiTemplate : gPreviewApiTemplate + '/';
         return `${base}${num}.jpg?u=${Date.now()}`;
     }
@@ -1065,9 +1084,9 @@
         const req = db.transaction([storeName], "readonly").objectStore(storeName).get(taskId);
         const task = await new Promise(r => req.onsuccess = () => r(req.result));
         
-        // 仅 JM 类型支持预览（按钮已隐藏，此检查作为额外防护）
+        // JM 和 Pixiv 类型都支持预览
         const sourceType = getSourceType(task.text);
-        if (sourceType !== 'jm') {
+        if (sourceType !== 'jm' && sourceType !== 'pixiv') {
             return;
         }
         
@@ -1197,9 +1216,16 @@
         }
     }
 
-    // ========== 本地预览（JM 专用）==========
-    function openLocalPreview(id) {
-        const url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+    // ========== 本地预览（JM 和 Pixiv 都支持）==========
+    function openLocalPreview(id, sourceType) {
+        let url;
+        if (sourceType === 'pixiv') {
+            // Pixiv 类型：跳转到 pictureForP
+            url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
+        } else {
+            // JM 类型：跳转到 TestPicture
+            url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+        }
         window.open(url, '_blank');
     }
 
@@ -1234,10 +1260,11 @@
             const card = document.createElement("div");
             card.className = "task-card";
             
-            // 判断是否为 JM 类型并获取 ID（使用已有的 getSourceType 逻辑）
+            // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
             const sourceType = getSourceType(task.text || "");
             const isJM = (sourceType === 'jm');
-            const num = isJM ? extractNumber(task.text || "") : null;
+            const isPixiv = (sourceType === 'pixiv');
+            const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
             
             // 状态样式类
             let statusClass = "status-pending";
@@ -1248,11 +1275,11 @@
             const favActive = task.favorite ? "active" : "";
             const favIcon = task.favorite ? "⭐" : "☆";
 
-            // 生成本地预览按钮 HTML（仅 JM 显示）
-            const localPreviewBtn = isJM ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}')" title="本地预览">📖</button>` : '';
+            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）
+            const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
             
-            // 生成预览按钮 HTML（仅 JM 类型显示）
-            const previewBtn = (sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
+            // 生成预览按钮 HTML（仅 JM 和 Pixiv 类型显示，预览第一张图片）
+            const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
             
             // 生成智能跳转按钮 HTML（仅 pixiv 或 JM 类型显示）
             const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
@@ -1505,6 +1532,41 @@
     // ✅ 简化搜索：不再支持 isUrlSearch
     function searchTasks() {
         loadTasksFromIndexedDB();
+    }
+
+    // ========== 随机作品按钮 ==========
+    function randomWork() {
+        const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+        req.onsuccess = () => {
+            let tasks = req.result;
+            // 筛选出 pixiv 和 JM 类型的任务
+            const validTasks = tasks.filter(t => {
+                const sourceType = getSourceType(t.text);
+                return sourceType === 'pixiv' || sourceType === 'jm';
+            });
+            
+            if (validTasks.length === 0) {
+                showToast("❌ 没有可用的 Pixiv 或 JM 作品", "warning");
+                return;
+            }
+            
+            // 随机选择一个
+            const randomIndex = Math.floor(Math.random() * validTasks.length);
+            const selectedTask = validTasks[randomIndex];
+            const sourceType = getSourceType(selectedTask.text);
+            const num = extractNumber(selectedTask.text);
+            
+            // 根据类型跳转到对应页面
+            if (sourceType === 'pixiv') {
+                const url = `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
+                window.open(url, '_blank');
+                showToast(`🎲 随机到 Pixiv 作品 #${num}`, "success");
+            } else if (sourceType === 'jm') {
+                const url = `https://booksreaders1.github.io/TestPicture/?id=${num}`;
+                window.open(url, '_blank');
+                showToast(`🎲 随机到 JM 作品 #${num}`, "success");
+            }
+        };
     }
 
     function filterByStatus(status) {
