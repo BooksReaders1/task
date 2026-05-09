@@ -701,6 +701,7 @@
     <button class="mobile-action-close" id="mobile-action-close">关闭</button>
 </div>
 
+<script src="imageProcessor.js"></script>
 <script>
     let db;
     const dbName = "taskDB";
@@ -1090,9 +1091,21 @@
         let url = generatePreviewUrl(task.text); // 同步
         if (!url) { showToast("无法生成预览图，请确保任务包含有效作品 ID（5 位以上数字）", "error"); return; }
 
+        // Pixiv 类型需要降低清晰度以加快渲染速度
+        let displayUrl = url;
+        if (sourceType === 'pixiv') {
+            try {
+                displayUrl = await processPreviewImage(url, 'pixiv');
+            } catch (error) {
+                console.warn('Pixiv 图片处理失败，使用原图:', error);
+                displayUrl = url; // 降级使用原图
+            }
+        }
+        // JM 类型不需要处理，直接使用原 URL
+
         const modal = document.createElement('div');
         modal.style = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:10000;`;
-        const safeUrl = escapeHtml(url);
+        const safeUrl = escapeHtml(displayUrl);
         // 生成一个内联的 SVG 占位图 (Base64)
         const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIj48L3JlY3Q+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiPjwvY2lyY2xlPjxwb2x5bGluZSBwb2ludHM9IjIxIDE1IDE2IDEwIDUgMjEiPjwvcG9seWxpbmU+PC9zdmc+';
         
