@@ -1599,16 +1599,18 @@
         const sourceCards = document.getElementById('source-filter-cards');
         const toggleBtn = document.getElementById('view-toggle-btn');
         
-        if (currentViewMode === 'status') {
+        if (currentViewMode === 'source') {
+            // 当前是来源视图，切换到状态视图
+            sourceCards.style.display = 'none';
+            statusCards.style.display = 'grid';
+            toggleBtn.innerHTML = '🌐 来源视图';
+            currentViewMode = 'status';
+        } else {
+            // 当前是状态视图，切换到来源视图
             statusCards.style.display = 'none';
             sourceCards.style.display = 'grid';
             toggleBtn.innerHTML = '🔄 状态视图';
             currentViewMode = 'source';
-        } else {
-            statusCards.style.display = 'grid';
-            sourceCards.style.display = 'none';
-            toggleBtn.innerHTML = '🌐 来源视图';
-            currentViewMode = 'status';
         }
         // 重置筛选
         clearFilters();
