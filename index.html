@@ -596,6 +596,115 @@
             background-color: #333;
             margin: 10px 0;
         }
+
+        /* 更新日志悬浮窗样式 */
+        .changelog-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+        }
+
+        .changelog-modal-overlay.show {
+            display: flex;
+        }
+
+        .changelog-modal {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .changelog-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+        }
+
+        .changelog-modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .changelog-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .changelog-modal-close:hover {
+            background-color: #e9ecef;
+            color: #2c3e50;
+        }
+
+        .changelog-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .changelog-entry {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .changelog-entry:last-child {
+            border-bottom: none;
+        }
+
+        .changelog-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .changelog-entry-date {
+            font-size: 13px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .changelog-entry-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 4px 0;
+        }
+
+        .changelog-entry-description {
+            font-size: 14px;
+            color: #495057;
+            line-height: 1.6;
+            text-align: center;
+            margin: 8px 0;
+        }
     </style>
 </head>
 <body>
@@ -616,7 +725,22 @@
     <button class="side-menu-item" onclick="exportDataToClipboard()">📤 导出数据 (粘贴板)</button>
     <button class="side-menu-item" onclick="importData()">📥 导入数据 (文件)</button>
     <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" onclick="showChangelogModal()">📝 更新日志</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
+</div>
+
+<!-- 更新日志悬浮窗 -->
+<div id="changelog-modal-overlay" class="changelog-modal-overlay" onclick="closeChangelogModal(event)">
+    <div class="changelog-modal" onclick="event.stopPropagation()">
+        <div class="changelog-modal-header">
+            <h3 class="changelog-modal-title">📝 更新日志</h3>
+            <button class="changelog-modal-close" onclick="closeChangelogModalBtn()">&times;</button>
+        </div>
+        <div id="changelog-modal-body" class="changelog-modal-body">
+            <!-- 更新日志内容将通过 JavaScript 动态生成 -->
+        </div>
+    </div>
 </div>
 
 <h1>任务管理</h1>
@@ -870,6 +994,146 @@
     // ========== 功能屏蔽提示 ==========
     function showDisabledToast() {
         showToast("功能暂时屏蔽！", "warning");
+    }
+
+    // ========== 更新日志数据（从 README 提取，写死在代码中）==========
+    const CHANGELOG_DATA = [
+        {
+            date: "2026-05-27 13:48:00",
+            title: "Add changelog modal functionality",
+            description: "增加更新日志功能：在左侧菜单添加更新日志入口，点击后弹出悬浮窗显示所有历史更新记录"
+        },
+        {
+            date: "2026-04-17 12:00:00",
+            title: "Update README with Pixiv preview details and random button position",
+            description: "更新 README 文档：补充预览图功能说明；更新随机作品按钮位置说明；完善配置 JM 等功能暂时屏蔽的提示说明"
+        },
+        {
+            date: "2026-04-17 11:30:00",
+            title: "Fix Pixiv preview image loading and new window adaptation",
+            description: "修复 Pixiv 类型预览图加载问题；修复新窗口打开原图未适配 Pixiv 的问题"
+        },
+        {
+            date: "2026-04-17 11:00:00",
+            title: "Add Pixiv local preview and random work button",
+            description: "新增 Pixiv 类型本地预览支持；新增随机作品按钮；配置 JM、恢复默认 JM、恢复默认预览功能暂时屏蔽"
+        },
+        {
+            date: "2026-04-17 10:00:00",
+            title: "Add local preview button for JM tasks",
+            description: "新增本地预览按钮：在任务卡片的操作列中增加本地预览按钮，仅当数据属于 JM 时显示"
+        },
+        {
+            date: "2026-04-17 09:21:49",
+            title: "Add export to clipboard functionality",
+            description: "新增导出复制到粘贴板功能：在左侧菜单中新增导出数据粘贴板选项，仅将数据复制到剪贴板而不生成文件"
+        },
+        {
+            date: "2026-04-17 09:17:05",
+            title: "Add JSON text paste import functionality",
+            description: "新增导入数据支持粘贴 JSON 文本：在左侧菜单中新增导入数据粘贴选项，用户可以直接粘贴 JSON 格式的备份数据进行导入"
+        },
+        {
+            date: "2026-04-17 09:05:04",
+            title: "Add side menu UI and clipboard copy on export",
+            description: "新增左侧滑出式菜单：将配置 JM、恢复默认 JM、恢复默认预览、导入导出按钮移入左侧黑色小菜单；导出时自动复制数据到剪贴板"
+        },
+        {
+            date: "2026-04-17 08:43:00",
+            title: "Add data export and import functionality for migration",
+            description: "新增数据导出和导入功能：支持将全部任务数据导出为 JSON 格式文件用于备份迁移；导入时进行严格校验，仅当数据库为空时才允许导入"
+        },
+        {
+            date: "2026-04-13 08:15:00",
+            title: "Add graceful degradation for preview images",
+            description: "为预览图弹窗添加错误处理机制：图片加载失败时自动显示友好的 SVG 占位图"
+        },
+        {
+            date: "2026-04-13 07:48:06",
+            title: "Fix README log logic and update view toggle UI",
+            description: "修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称"
+        },
+        {
+            date: "2026-04-13 07:35:40",
+            title: "Fix README log logic and update view toggle UI",
+            description: "修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称"
+        },
+        {
+            date: "2026-04-13 12:00:00",
+            title: "Redesign view switch button with simplified UI",
+            description: "重构视图切换区域：按钮独立成行位于统计卡片上方，采用简洁样式仅显示 Emoji+ 视图名称"
+        },
+        {
+            date: "2026-04-13 05:52:03",
+            title: "Fix JM and PIXIV detection logic to match smart jump behavior",
+            description: "修复 getSourceType 函数逻辑，使其与智能跳转判断条件完全一致"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Add source-based filtering cards with view switcher",
+            description: "新增来源视图切换功能，支持按全部/JM/PIXIV/其他筛选任务，统计卡片与智能跳转逻辑保持一致"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Refactor task card UI with improved layout and action menu",
+            description: "重构任务卡片 UI，采用改良版方案一：常驻预览 + 跳转按钮，收藏移至标题旁，状态标签可点击切换，其他操作收纳至更多菜单"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Replace alert/confirm/prompt with non-blocking Toast and custom dialogs",
+            description: "替换所有原生弹窗为页面顶部悬浮 Toast 通知和自定义对话框，避免硬打断用户体验"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Add HTML escaping to prevent XSS vulnerabilities",
+            description: "添加 HTML 转义函数，对任务文本、备注、状态字段和预览图 URL 进行安全处理，防止跨站脚本攻击"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Initial commit: Task management system based on IndexedDB",
+            description: "初始版本：基于 IndexedDB 的任务管理系统，支持增删改查、状态分类、收藏、搜索筛选、统计面板、JM 配置和预览图功能"
+        }
+    ];
+
+    // ========== 更新日志悬浮窗功能 ==========
+    function showChangelogModal() {
+        const modalOverlay = document.getElementById('changelog-modal-overlay');
+        const modalBody = document.getElementById('changelog-modal-body');
+        
+        // 生成更新日志 HTML
+        let html = '';
+        CHANGELOG_DATA.forEach(entry => {
+            html += `
+                <div class="changelog-entry">
+                    <div class="changelog-entry-header">
+                        <span class="changelog-entry-date">${escapeHtml(entry.date)}</span>
+                    </div>
+                    <div class="changelog-entry-title">${escapeHtml(entry.title)}</div>
+                    <div class="changelog-entry-description">${escapeHtml(entry.description)}</div>
+                </div>
+            `;
+        });
+        
+        modalBody.innerHTML = html;
+        modalOverlay.classList.add('show');
+        
+        // 关闭侧边菜单
+        const sideMenu = document.getElementById('side-menu');
+        if (sideMenu && sideMenu.classList.contains('open')) {
+            sideMenu.classList.remove('open');
+        }
+    }
+
+    function closeChangelogModal(event) {
+        if (event.target.id === 'changelog-modal-overlay') {
+            const modalOverlay = document.getElementById('changelog-modal-overlay');
+            modalOverlay.classList.remove('show');
+        }
+    }
+
+    function closeChangelogModalBtn() {
+        const modalOverlay = document.getElementById('changelog-modal-overlay');
+        modalOverlay.classList.remove('show');
     }
 
     // ========== 确认对话框（替代 confirm）==========
