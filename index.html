@@ -1017,6 +1017,11 @@
     // ========== 更新日志数据（从 README 提取，写死在代码中）==========
     const CHANGELOG_DATA = [
         {
+            date: "2026-05-27 15:05:00",
+            title: "Disable local preview functionality",
+            description: "暂时注释掉本地预览相关代码，屏蔽本地预览功能"
+        },
+        {
             date: "2026-05-27 13:48:00",
             title: "Add changelog modal functionality",
             description: "增加更新日志功能：在左侧菜单添加更新日志入口，点击后弹出悬浮窗显示所有历史更新记录"
@@ -1500,18 +1505,18 @@
         }
     }
 
-    // ========== 本地预览（JM 和 Pixiv 都支持）==========
-    function openLocalPreview(id, sourceType) {
-        let url;
-        if (sourceType === 'pixiv') {
-            // Pixiv 类型：跳转到 pictureForP
-            url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
-        } else {
-            // JM 类型：跳转到 TestPicture
-            url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
-        }
-        window.open(url, '_blank');
-    }
+    // ========== 本地预览（JM 和 Pixiv 都支持）【已屏蔽】==========
+    // function openLocalPreview(id, sourceType) {
+    //     let url;
+    //     if (sourceType === 'pixiv') {
+    //         // Pixiv 类型：跳转到 pictureForP
+    //         url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
+    //     } else {
+    //         // JM 类型：跳转到 TestPicture
+    //         url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+    //     }
+    //     window.open(url, '_blank');
+    // }
 
     // ========== 收藏链接跳转（JM 和 Pixiv 都支持）==========
     function openFavoriteLink(id, sourceType) {
@@ -1565,8 +1570,9 @@
             const favActive = task.favorite ? "active" : "";
             const favIcon = task.favorite ? "⭐" : "☆";
 
-            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）
-            const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
+            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）【已屏蔽】
+            const localPreviewBtn = '';
+            // const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
             
             // 生成收藏链接按钮 HTML（仅 JM 和 Pixiv 类型显示，跳转到 booksreaders1.github.io/PrictureView）
             const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
