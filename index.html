@@ -685,6 +685,18 @@
             gap: 8px;
         }
 
+        .changelog-new-tag {
+            background-color: #28a745;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
         .changelog-entry-date {
             font-size: 13px;
             color: #6c757d;
@@ -1102,11 +1114,12 @@
         
         // 生成更新日志 HTML
         let html = '';
-        CHANGELOG_DATA.forEach(entry => {
+        CHANGELOG_DATA.forEach((entry, index) => {
+            const isNewTag = index === 0 ? '<span class="changelog-new-tag">NEW</span>' : '';
             html += `
                 <div class="changelog-entry">
                     <div class="changelog-entry-header">
-                        <span class="changelog-entry-date">${escapeHtml(entry.date)}</span>
+                        <span class="changelog-entry-date">${escapeHtml(entry.date)}${isNewTag}</span>
                     </div>
                     <div class="changelog-entry-title">${escapeHtml(entry.title)}</div>
                     <div class="changelog-entry-description">${escapeHtml(entry.description)}</div>
