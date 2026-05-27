@@ -167,6 +167,12 @@ if  {
 
 ## 📝 更新日志
 
+============= 2026-05-27 13:48:00 : **Add changelog modal functionality** ==========
+
+<center>增加更新日志功能：在左侧菜单添加更新日志入口，点击后弹出悬浮窗显示所有历史更新记录</center>
+
+========== ==== commit end =================
+
 ============= 2026-04-17 12:00:00 : **Update README with Pixiv preview details and random button position** ==========
 
 <center>更新 README 文档：补充预览图功能说明；更新随机作品按钮位置说明；完善配置 JM 等功能暂时屏蔽的提示说明</center>
