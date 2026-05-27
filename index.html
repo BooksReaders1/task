@@ -254,6 +254,24 @@
             align-items: center;
         }
 
+        .task-card-source-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .tag-pixiv {
+            background-color: #0096fa;
+            color: white;
+        }
+
+        .tag-jm {
+            background-color: #7b1fa2;
+            color: white;
+        }
+
         .task-card-status-badge {
             padding: 2px 10px;
             border-radius: 12px;
@@ -318,6 +336,12 @@
             line-height: 1;
         }
         .task-card-btn-more:hover { background: #e5e7eb; }
+
+        .task-card-btn-favorite-link {
+            background: #e91e63;
+            color: white;
+        }
+        .task-card-btn-favorite-link:hover { background: #c2185b; }
 
         /* 更多菜单下拉框 (PC) */
         .task-card-more-menu {
@@ -572,6 +596,133 @@
             background-color: #333;
             margin: 10px 0;
         }
+
+        /* 更新日志悬浮窗样式 */
+        .changelog-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+        }
+
+        .changelog-modal-overlay.show {
+            display: flex;
+        }
+
+        .changelog-modal {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .changelog-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+        }
+
+        .changelog-modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .changelog-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .changelog-modal-close:hover {
+            background-color: #e9ecef;
+            color: #2c3e50;
+        }
+
+        .changelog-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .changelog-entry {
+            margin-bottom: 28px;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .changelog-entry:last-child {
+            margin-bottom: 0;
+        }
+
+        .changelog-entry-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .changelog-new-tag {
+            background-color: #28a745;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+        }
+
+        .changelog-entry-date {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 500;
+            background-color: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .changelog-entry-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0 0 8px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #dee2e6;
+        }
+
+        .changelog-entry-description {
+            font-size: 14px;
+            color: #495057;
+            line-height: 1.7;
+            margin: 0;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -584,15 +735,30 @@
 
 <!-- 左侧滑出菜单 -->
 <div id="side-menu" class="side-menu">
-    <button class="side-menu-item" onclick="openJMConfig()">⚙️ 配置 JM</button>
-    <button class="side-menu-item" onclick="resetJMConfigToDefault()">🔄 恢复默认 JM</button>
-    <button class="side-menu-item" onclick="resetPreviewApiToDefault()">🔄 恢复默认预览</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">⚙️ 配置 JM</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">🔄 恢复默认 JM</button>
+    <button class="side-menu-item" onclick="showDisabledToast()">🔄 恢复默认预览</button>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" onclick="exportData()">📤 导出数据 (文件)</button>
     <button class="side-menu-item" onclick="exportDataToClipboard()">📤 导出数据 (粘贴板)</button>
     <button class="side-menu-item" onclick="importData()">📥 导入数据 (文件)</button>
     <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" onclick="showChangelogModal()">📝 更新日志</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
+</div>
+
+<!-- 更新日志悬浮窗 -->
+<div id="changelog-modal-overlay" class="changelog-modal-overlay" onclick="closeChangelogModal(event)">
+    <div class="changelog-modal" onclick="event.stopPropagation()">
+        <div class="changelog-modal-header">
+            <h3 class="changelog-modal-title">📝 更新日志</h3>
+            <button class="changelog-modal-close" onclick="closeChangelogModalBtn()">&times;</button>
+        </div>
+        <div id="changelog-modal-body" class="changelog-modal-body">
+            <!-- 更新日志内容将通过 JavaScript 动态生成 -->
+        </div>
+    </div>
 </div>
 
 <h1>任务管理</h1>
@@ -602,6 +768,9 @@
     <input type="text" id="task-remark" placeholder="输入备注"/>
     <button class="unified-button btn-save-new" onclick="saveTask()">✅ 保存任务</button>
     <button class="unified-button btn-paste" onclick="pasteFromClipboard()">📋 粘贴</button>
+    <button class="unified-button btn-preview" onclick="randomWork()" title="从 Pixiv 和 JM 中随机抽取一个作品">
+        🎲 随机作品
+    </button>
 </div>
 
 <div class="filter-section">
@@ -612,14 +781,14 @@
 
 <div class="stats-container">
     <!-- 视图切换按钮 - 独立一行 -->
-    <div class="view-switcher-row">
-        <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()">
-            🔄 状态视图
+    <div class="view-switcher-row" style="justify-content: center; align-items: center;">
+        <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleFilterView()" style="width: auto; max-width: none;">
+            🌐 来源视图
         </button>
     </div>
     
     <!-- 状态视图卡片 -->
-    <div id="status-filter-cards" class="stats-card-group">
+    <div id="status-filter-cards" class="stats-card-group" style="display:none;">
         <div class="stats-card all" onclick="filterByStatus('')">
             <h3>全部任务</h3>
             <span id="total-tasks">0</span>
@@ -643,7 +812,7 @@
     </div>
     
     <!-- 来源视图卡片 -->
-    <div id="source-filter-cards" class="stats-card-group" style="display:none;">
+    <div id="source-filter-cards" class="stats-card-group">
         <div class="stats-card all" onclick="filterBySource('all')" style="background-color:#6b7280;">
             <h3>全部</h3>
             <span id="source-all-count">0</span>
@@ -689,6 +858,9 @@
     // ✅ 全局配置缓存（关键！）
     let gJMTemplate = "https://jm18c-uoi.net/album/";
     let gPreviewApiTemplate = "https://cdn-msp.jm18c-uoi.net/media/albums/";
+    
+    // ✅ 任务数据缓存（用于同步复制，避免 iOS 手势上下文丢失）
+    let gCachedTasks = [];
 
     const request = indexedDB.open(dbName, 4);
 
@@ -757,6 +929,8 @@
         showToast("JM 跳转配置已保存", "success");
     }
 
+    // ========== 配置 JM（功能已屏蔽）==========
+    /*
     async function resetJMConfigToDefault() {
         if (!await showConfirm("确定恢复 JM 跳转为默认地址？")) return;
         db.transaction(["configs"], "readwrite").objectStore("configs").delete("jmUrl");
@@ -784,13 +958,10 @@
             const cursor = event.target.result;
             if (cursor) {
                 const task = cursor.value;
-                if (task.previewUrl) {
-                    delete task.previewUrl;
-                    cursor.update(task);
-                }
+                // ✅ 不再需要清空 previewUrl，因为已改为实时计算
                 cursor.continue();
             } else {
-                showToast("✅ 预览图配置已恢复默认，并清空所有任务的预览缓存！", "success");
+                showToast("✅ 预览图配置已恢复默认！现在预览 URL 将实时计算。", "success");
                 loadTasksFromIndexedDB();
             }
         };
@@ -806,6 +977,7 @@
             if (input !== null) savePreviewApiConfig(input);
         }
     }
+    */
 
     // ========== 安全工具函数 ==========
     function escapeHtml(text) {
@@ -835,6 +1007,152 @@
                 }
             }, 300);
         }, duration);
+    }
+
+    // ========== 功能屏蔽提示 ==========
+    function showDisabledToast() {
+        showToast("功能暂时屏蔽！", "warning");
+    }
+
+    // ========== 更新日志数据（从 README 提取，写死在代码中）==========
+    const CHANGELOG_DATA = [
+        {
+            date: "2026-05-27 13:48:00",
+            title: "Add changelog modal functionality",
+            description: "增加更新日志功能：在左侧菜单添加更新日志入口，点击后弹出悬浮窗显示所有历史更新记录"
+        },
+        {
+            date: "2026-04-17 12:00:00",
+            title: "Update README with Pixiv preview details and random button position",
+            description: "更新 README 文档：补充预览图功能说明；更新随机作品按钮位置说明；完善配置 JM 等功能暂时屏蔽的提示说明"
+        },
+        {
+            date: "2026-04-17 11:30:00",
+            title: "Fix Pixiv preview image loading and new window adaptation",
+            description: "修复 Pixiv 类型预览图加载问题；修复新窗口打开原图未适配 Pixiv 的问题"
+        },
+        {
+            date: "2026-04-17 11:00:00",
+            title: "Add Pixiv local preview and random work button",
+            description: "新增 Pixiv 类型本地预览支持；新增随机作品按钮；配置 JM、恢复默认 JM、恢复默认预览功能暂时屏蔽"
+        },
+        {
+            date: "2026-04-17 10:00:00",
+            title: "Add local preview button for JM tasks",
+            description: "新增本地预览按钮：在任务卡片的操作列中增加本地预览按钮，仅当数据属于 JM 时显示"
+        },
+        {
+            date: "2026-04-17 09:21:49",
+            title: "Add export to clipboard functionality",
+            description: "新增导出复制到粘贴板功能：在左侧菜单中新增导出数据粘贴板选项，仅将数据复制到剪贴板而不生成文件"
+        },
+        {
+            date: "2026-04-17 09:17:05",
+            title: "Add JSON text paste import functionality",
+            description: "新增导入数据支持粘贴 JSON 文本：在左侧菜单中新增导入数据粘贴选项，用户可以直接粘贴 JSON 格式的备份数据进行导入"
+        },
+        {
+            date: "2026-04-17 09:05:04",
+            title: "Add side menu UI and clipboard copy on export",
+            description: "新增左侧滑出式菜单：将配置 JM、恢复默认 JM、恢复默认预览、导入导出按钮移入左侧黑色小菜单；导出时自动复制数据到剪贴板"
+        },
+        {
+            date: "2026-04-17 08:43:00",
+            title: "Add data export and import functionality for migration",
+            description: "新增数据导出和导入功能：支持将全部任务数据导出为 JSON 格式文件用于备份迁移；导入时进行严格校验，仅当数据库为空时才允许导入"
+        },
+        {
+            date: "2026-04-13 08:15:00",
+            title: "Add graceful degradation for preview images",
+            description: "为预览图弹窗添加错误处理机制：图片加载失败时自动显示友好的 SVG 占位图"
+        },
+        {
+            date: "2026-04-13 07:48:06",
+            title: "Fix README log logic and update view toggle UI",
+            description: "修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称"
+        },
+        {
+            date: "2026-04-13 07:35:40",
+            title: "Fix README log logic and update view toggle UI",
+            description: "修正 README 更新日志逻辑：新增记录而非修改，使用真实系统时间；优化视图切换按钮至卡片上方独立行，简化文字为 Emoji+ 名称"
+        },
+        {
+            date: "2026-04-13 12:00:00",
+            title: "Redesign view switch button with simplified UI",
+            description: "重构视图切换区域：按钮独立成行位于统计卡片上方，采用简洁样式仅显示 Emoji+ 视图名称"
+        },
+        {
+            date: "2026-04-13 05:52:03",
+            title: "Fix JM and PIXIV detection logic to match smart jump behavior",
+            description: "修复 getSourceType 函数逻辑，使其与智能跳转判断条件完全一致"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Add source-based filtering cards with view switcher",
+            description: "新增来源视图切换功能，支持按全部/JM/PIXIV/其他筛选任务，统计卡片与智能跳转逻辑保持一致"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Refactor task card UI with improved layout and action menu",
+            description: "重构任务卡片 UI，采用改良版方案一：常驻预览 + 跳转按钮，收藏移至标题旁，状态标签可点击切换，其他操作收纳至更多菜单"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Replace alert/confirm/prompt with non-blocking Toast and custom dialogs",
+            description: "替换所有原生弹窗为页面顶部悬浮 Toast 通知和自定义对话框，避免硬打断用户体验"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Add HTML escaping to prevent XSS vulnerabilities",
+            description: "添加 HTML 转义函数，对任务文本、备注、状态字段和预览图 URL 进行安全处理，防止跨站脚本攻击"
+        },
+        {
+            date: "2026-04-13 05:48:46",
+            title: "Initial commit: Task management system based on IndexedDB",
+            description: "初始版本：基于 IndexedDB 的任务管理系统，支持增删改查、状态分类、收藏、搜索筛选、统计面板、JM 配置和预览图功能"
+        }
+    ];
+
+    // ========== 更新日志悬浮窗功能 ==========
+    function showChangelogModal() {
+        const modalOverlay = document.getElementById('changelog-modal-overlay');
+        const modalBody = document.getElementById('changelog-modal-body');
+        
+        // 生成更新日志 HTML
+        let html = '';
+        CHANGELOG_DATA.forEach((entry, index) => {
+            const isNewTag = index === 0 ? '<span class="changelog-new-tag">NEW</span>' : '';
+            html += `
+                <div class="changelog-entry">
+                    <div class="changelog-entry-header">
+                        <span class="changelog-entry-date">${escapeHtml(entry.date)}${isNewTag}</span>
+                    </div>
+                    <div class="changelog-entry-title">${escapeHtml(entry.title)}</div>
+                    <div class="changelog-entry-description">${escapeHtml(entry.description)}</div>
+                </div>
+            `;
+        });
+        
+        modalBody.innerHTML = html;
+        modalOverlay.classList.add('show');
+        
+        // 关闭侧边菜单
+        const sideMenu = document.getElementById('side-menu');
+        if (sideMenu && sideMenu.classList.contains('open')) {
+            sideMenu.classList.remove('open');
+        }
+    }
+
+    function closeChangelogModal(event) {
+        if (event.target.id === 'changelog-modal-overlay') {
+            const modalOverlay = document.getElementById('changelog-modal-overlay');
+            modalOverlay.classList.remove('show');
+        }
+    }
+
+    function closeChangelogModalBtn() {
+        const modalOverlay = document.getElementById('changelog-modal-overlay');
+        modalOverlay.classList.remove('show');
     }
 
     // ========== 确认对话框（替代 confirm）==========
@@ -939,31 +1257,44 @@
 
     // ✅ 使用全局变量，同步生成
     function generatePreviewUrl(taskText) {
+        const sourceType = getSourceType(taskText);
         const num = extractNumber(taskText);
         if (!num || num.length < 5) return null;
+        
+        // Pixiv 类型：使用 pixiv.re 获取第一张图片
+        if (sourceType === 'pixiv') {
+            return `https://pixiv.re/${num}.jpg`;
+        }
+        
+        // JM 类型：使用 JM 预览 API
         const base = gPreviewApiTemplate.endsWith('/') ? gPreviewApiTemplate : gPreviewApiTemplate + '/';
         return `${base}${num}.jpg?u=${Date.now()}`;
     }
 
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
-        const previewUrl = generatePreviewUrl(task.text); // 同步
-        if (previewUrl) task.previewUrl = previewUrl;
+        // ✅ 不再保存 previewUrl 到数据库，改为实时计算
         const tx = db.transaction([storeName], "readwrite");
         tx.objectStore(storeName).add(task).onsuccess = () => {
-            loadTasksFromIndexedDB();
+            applyCurrentFilter();
             clearTaskInputs();
         };
     }
 
     function updateTaskInDB(taskId, updates) {
-        const tx = db.transaction([storeName], "readwrite");
-        const req = tx.objectStore(storeName).get(taskId);
-        req.onsuccess = () => {
-            const task = req.result;
-            Object.assign(task, updates);
-            tx.objectStore(storeName).put(task);
-        };
+        return new Promise((resolve) => {
+            const tx = db.transaction([storeName], "readwrite");
+            const req = tx.objectStore(storeName).get(taskId);
+            req.onsuccess = () => {
+                const task = req.result;
+                Object.assign(task, updates);
+                tx.objectStore(storeName).put(task);
+                tx.oncomplete = () => {
+                    applyCurrentFilter();
+                    resolve();
+                };
+            };
+        });
     }
 
     async function loadTasksFromIndexedDB() {
@@ -973,6 +1304,8 @@
                 const tasks = req.result;
                 tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
+                // ✅ 缓存数据，用于同步复制
+                gCachedTasks = [...tasks];
                 displayTasks(tasks);
                 updateTaskStats();
                 resolve(true);
@@ -1036,34 +1369,37 @@
         const req = db.transaction([storeName], "readonly").objectStore(storeName).get(taskId);
         const task = await new Promise(r => req.onsuccess = () => r(req.result));
         
-        // 仅 JM 类型支持预览（按钮已隐藏，此检查作为额外防护）
+        // JM 和 Pixiv 类型都支持预览
         const sourceType = getSourceType(task.text);
-        if (sourceType !== 'jm') {
+        if (sourceType !== 'jm' && sourceType !== 'pixiv') {
             return;
         }
         
-        let url = task.previewUrl;
-        if (!url) {
-            url = generatePreviewUrl(task.text); // 同步
-            if (url) {
-                task.previewUrl = url;
-                updateTaskInDB(taskId, { previewUrl: url });
-            }
-        }
+        // 实时计算预览 URL（不再从数据库读取）
+        let url = generatePreviewUrl(task.text); // 同步
         if (!url) { showToast("无法生成预览图，请确保任务包含有效作品 ID（5 位以上数字）", "error"); return; }
 
+        // 先创建模态框并显示（不等待图片处理）
         const modal = document.createElement('div');
+        modal.className = 'preview-modal';
         modal.style = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:10000;`;
+        
         const safeUrl = escapeHtml(url);
-        // 生成一个内联的 SVG 占位图 (Base64)
         const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIj48L3JlY3Q+PGNpcmNsZSBjeD0iOC41IiBjeT0iOC41IiByPSIxLjUiPjwvY2lyY2xlPjxwb2x5bGluZSBwb2ludHM9IjIxIDE1IDE2IDEwIDUgMjEiPjwvcG9seWxpbmU+PC9zdmc+';
+        
+        // 初始使用原图 URL
+        let imgSrc = safeUrl;
         
         modal.innerHTML = `
             <div style="position:relative;max-width:90vw;max-height:90vh;color:white;text-align:center;">
                 <button onclick="this.closest('.preview-modal').remove()" style="position:absolute;top:-40px;right:0;background:white;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;font-weight:bold;">✕ 关闭</button>
                 <div style="margin-top:20px;position:relative;">
-                    <img src="${safeUrl}" 
+                    <img src="${imgSrc}" 
                          style="max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:4px;"
+                         onload="
+                            const container = this.parentElement;
+                            container.querySelector('.loading-spinner').style.display='none';
+                         "
                          onerror="
                             this.style.display='none';
                             const container = this.parentElement;
@@ -1164,9 +1500,22 @@
         }
     }
 
-    // ========== 本地预览（JM 专用）==========
-    function openLocalPreview(id) {
-        const url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+    // ========== 本地预览（JM 和 Pixiv 都支持）==========
+    function openLocalPreview(id, sourceType) {
+        let url;
+        if (sourceType === 'pixiv') {
+            // Pixiv 类型：跳转到 pictureForP
+            url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
+        } else {
+            // JM 类型：跳转到 TestPicture
+            url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+        }
+        window.open(url, '_blank');
+    }
+
+    // ========== 收藏链接跳转（JM 和 Pixiv 都支持）==========
+    function openFavoriteLink(id, sourceType) {
+        const url = `https://booksreaders1.github.io/PrictureView/?type=${sourceType}&id=${id}`;
         window.open(url, '_blank');
     }
 
@@ -1181,6 +1530,9 @@
             task.text.toLowerCase().includes(searchTerm) ||
             task.remark.toLowerCase().includes(searchTerm)
         );
+
+        // ✅ 缓存过滤后的数据，用于同步复制
+        gCachedTasks = [...filtered];
 
         if (filtered.length === 0) {
             container.innerHTML = `
@@ -1198,10 +1550,11 @@
             const card = document.createElement("div");
             card.className = "task-card";
             
-            // 判断是否为 JM 类型并获取 ID（使用已有的 getSourceType 逻辑）
+            // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
             const sourceType = getSourceType(task.text || "");
             const isJM = (sourceType === 'jm');
-            const num = isJM ? extractNumber(task.text || "") : null;
+            const isPixiv = (sourceType === 'pixiv');
+            const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
             
             // 状态样式类
             let statusClass = "status-pending";
@@ -1212,14 +1565,25 @@
             const favActive = task.favorite ? "active" : "";
             const favIcon = task.favorite ? "⭐" : "☆";
 
-            // 生成本地预览按钮 HTML（仅 JM 显示）
-            const localPreviewBtn = isJM ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}')" title="本地预览">📖</button>` : '';
+            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）
+            const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
             
-            // 生成预览按钮 HTML（仅 JM 类型显示）
-            const previewBtn = (sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
+            // 生成收藏链接按钮 HTML（仅 JM 和 Pixiv 类型显示，跳转到 booksreaders1.github.io/PrictureView）
+            const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
+            
+            // 生成预览按钮 HTML（仅 JM 和 Pixiv 类型显示，预览第一张图片）
+            const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
             
             // 生成智能跳转按钮 HTML（仅 pixiv 或 JM 类型显示）
             const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
+
+            // 生成来源标签 HTML
+            let sourceTagHtml = '';
+            if (sourceType === 'pixiv') {
+                sourceTagHtml = '<span class="task-card-source-tag tag-pixiv">Pixiv</span>';
+            } else if (sourceType === 'jm') {
+                sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
+            }
 
             card.innerHTML = `
                 <div class="task-card-header">
@@ -1230,6 +1594,7 @@
                 </div>
                 <div class="task-card-meta">
                     <span>📝 ${escapedRemark || "无备注"}</span>
+                    ${sourceTagHtml}
                     <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
                 </div>
                 <div class="task-card-actions">
@@ -1237,6 +1602,7 @@
                         ${previewBtn}
                         ${smartJumpBtn}
                         ${localPreviewBtn}
+                        ${favoriteLinkBtn}
                     </div>
                     <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
                     <div class="task-card-more-menu" id="more-menu-${task.id}">
@@ -1281,23 +1647,31 @@
             const statusCycle = ["未使用", "已完成", "已失效"];
             const currentIndex = statusCycle.indexOf(task.status);
             task.status = statusCycle[(currentIndex + 1) % statusCycle.length];
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                applyCurrentFilter();
+            };
         };
     }
 
-    // 复制任务文本
+    // 复制任务文本（使用缓存数据，避免异步查询导致 iOS 手势上下文丢失）
     function copyTaskText(id) {
-        const req = db.transaction([storeName], "readwrite").objectStore(storeName).get(id);
-        req.onsuccess = () => {
-            const task = req.result;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(task.text).then(() => {
-                    showToast("✅ 已复制到剪贴板", "success");
-                });
-            } else {
-                showToast("❌ 浏览器不支持剪贴板 API", "error");
-            }
-        };
+        // ✅ 从缓存中同步获取数据
+        const task = gCachedTasks.find(t => t.id === id);
+        if (!task) {
+            showToast("❌ 任务未找到", "error");
+            return;
+        }
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(task.text).then(() => {
+                showToast("✅ 已复制到剪贴板", "success");
+            }).catch(err => {
+                console.error("复制失败", err);
+                showToast("❌ 复制失败，请手动操作", "error");
+            });
+        } else {
+            showToast("❌ 浏览器不支持剪贴板 API", "error");
+        }
     }
 
     // 卡片内编辑任务
@@ -1367,7 +1741,9 @@
             showToast("已取消删除", "info");
             return;
         }
-        db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = loadTasksFromIndexedDB;
+        db.transaction([storeName], "readwrite").objectStore(storeName).delete(id).onsuccess = () => {
+            applyCurrentFilter();
+        };
     }
 
     function toggleFavorite(id) {
@@ -1375,7 +1751,9 @@
         req.onsuccess = () => {
             const task = req.result;
             task.favorite = !task.favorite;
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                applyCurrentFilter();
+            };
         };
     }
 
@@ -1389,26 +1767,30 @@
         req.onsuccess = () => {
             const task = req.result;
             task.status = status;
-            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = loadTasksFromIndexedDB;
+            db.transaction([storeName], "readwrite").objectStore(storeName).put(task).onsuccess = () => {
+                // 更新后重新应用当前筛选条件
+                applyCurrentFilter();
+            };
         };
+    }
+
+    function applyCurrentFilter() {
+        if (currentFilter.type === 'status') {
+            filterByStatus(currentFilter.value);
+        } else if (currentFilter.type === 'favorite') {
+            filterByFavorite();
+        } else if (currentFilter.type === 'source') {
+            filterBySource(currentFilter.value);
+        } else {
+            loadTasksFromIndexedDB();
+        }
     }
 
     function saveTask() {
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
         if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
-        const matches = [...text.matchAll(/(\d{9})/g)];
-        if (matches.length > 0) {
-            let start = 0, count = 1;
-            matches.forEach(m => {
-                const newTxt = text.slice(start, m.index) + m[0];
-                addTaskToIndexedDB({ text: newTxt, remark: remark + count, status: "未使用", createdAt: Date.now() });
-                count++;
-                start = m.index + m[0].length;
-            });
-        } else {
-            addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
-        }
+        addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
     }
 
     function clearTaskInputs() {
@@ -1432,7 +1814,11 @@
         loadTasksFromIndexedDB();
     }
 
+    // 全局筛选状态变量
+    let currentFilter = { type: null, value: null }; // type: 'status', 'favorite', 'source'
+
     function clearFilters() {
+        currentFilter = { type: null, value: null };
         document.getElementById("search").value = "";
         loadTasksFromIndexedDB();
     }
@@ -1442,45 +1828,88 @@
         loadTasksFromIndexedDB();
     }
 
+    // ========== 随机作品按钮 ==========
+    function randomWork() {
+        const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+        req.onsuccess = () => {
+            let tasks = req.result;
+            // 筛选出 pixiv 和 JM 类型的任务
+            const validTasks = tasks.filter(t => {
+                const sourceType = getSourceType(t.text);
+                return sourceType === 'pixiv' || sourceType === 'jm';
+            });
+            
+            if (validTasks.length === 0) {
+                showToast("❌ 没有可用的 Pixiv 或 JM 作品", "warning");
+                return;
+            }
+            
+            // 随机选择一个
+            const randomIndex = Math.floor(Math.random() * validTasks.length);
+            const selectedTask = validTasks[randomIndex];
+            const sourceType = getSourceType(selectedTask.text);
+            const num = extractNumber(selectedTask.text);
+            
+            // 根据类型跳转到对应页面
+            if (sourceType === 'pixiv') {
+                const url = `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
+                window.open(url, '_blank');
+                showToast(`🎲 随机到 Pixiv 作品 #${num}`, "success");
+            } else if (sourceType === 'jm') {
+                const url = `https://booksreaders1.github.io/TestPicture/?id=${num}`;
+                window.open(url, '_blank');
+                showToast(`🎲 随机到 JM 作品 #${num}`, "success");
+            }
+        };
+    }
+
     function filterByStatus(status) {
+        currentFilter = { type: 'status', value: status };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
             tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
             tasks = status ? tasks.filter(t => t.status === status) : tasks;
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
 
     function filterByFavorite() {
+        currentFilter = { type: 'favorite', value: true };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
             tasks.forEach(t => { if (t.favorite === undefined) t.favorite = false; });
             tasks = tasks.filter(t => t.favorite);
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
 
     // 切换视图模式
-    let currentViewMode = 'status'; // 'status' or 'source'
+    let currentViewMode = 'source'; // 'status' or 'source'
     function toggleFilterView() {
         const statusCards = document.getElementById('status-filter-cards');
         const sourceCards = document.getElementById('source-filter-cards');
         const toggleBtn = document.getElementById('view-toggle-btn');
         
-        if (currentViewMode === 'status') {
+        if (currentViewMode === 'source') {
+            // 当前是来源视图，切换到状态视图
+            sourceCards.style.display = 'none';
+            statusCards.style.display = 'grid';
+            toggleBtn.innerHTML = '🌐 来源视图';
+            currentViewMode = 'status';
+        } else {
+            // 当前是状态视图，切换到来源视图
             statusCards.style.display = 'none';
             sourceCards.style.display = 'grid';
-            toggleBtn.innerHTML = '🌐 来源视图';
-            currentViewMode = 'source';
-        } else {
-            statusCards.style.display = 'grid';
-            sourceCards.style.display = 'none';
             toggleBtn.innerHTML = '🔄 状态视图';
-            currentViewMode = 'status';
+            currentViewMode = 'source';
         }
         // 重置筛选
         clearFilters();
@@ -1505,6 +1934,7 @@
 
     // 按来源筛选
     function filterBySource(sourceType) {
+        currentFilter = { type: 'source', value: sourceType };
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
             let tasks = req.result;
@@ -1515,6 +1945,8 @@
             }
             
             tasks.sort((a, b) => b.createdAt - a.createdAt);
+            // ✅ 缓存数据，用于同步复制
+            gCachedTasks = [...tasks];
             displayTasks(tasks);
         };
     }
@@ -1532,63 +1964,103 @@
 
     // ========== 数据导出功能 ==========
     async function exportData() {
-        return new Promise((resolve) => {
-            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
-            req.onsuccess = () => {
-                const tasks = req.result;
-                const exportData = {
-                    version: 1,
-                    exportDate: new Date().toISOString(),
-                    tasks: tasks
-                };
-                const jsonStr = JSON.stringify(exportData, null, 2);
-                
-                // 复制到剪贴板
-                navigator.clipboard.writeText(jsonStr).then(() => {
-                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
-                }).catch(err => {
-                    console.warn("复制到剪贴板失败", err);
-                });
-                
-                // 同时下载文件
-                const blob = new Blob([jsonStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `task_backup_${new Date().toISOString().slice(0,10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                resolve(true);
-            };
+        // ✅ 从缓存中同步获取数据
+        const tasks = gCachedTasks;
+        const exportData = {
+            version: 1,
+            exportDate: new Date().toISOString(),
+            tasks: tasks
+        };
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+        }).catch(err => {
+            console.warn("复制到剪贴板失败", err);
         });
+        
+        // 同时下载文件
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `task_backup_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return true;
     }
 
     // ========== 仅导出数据到剪贴板（不生成文件）==========
     async function exportDataToClipboard() {
-        return new Promise((resolve) => {
-            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
-            req.onsuccess = () => {
-                const tasks = req.result;
-                const exportData = {
-                    version: 1,
-                    exportDate: new Date().toISOString(),
-                    tasks: tasks
-                };
-                const jsonStr = JSON.stringify(exportData, null, 2);
-                
-                // 仅复制到剪贴板，不生成文件
-                navigator.clipboard.writeText(jsonStr).then(() => {
-                    showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
-                    resolve(true);
-                }).catch(err => {
-                    console.error("复制到剪贴板失败", err);
-                    showToast("复制到剪贴板失败，请手动操作", "error");
-                    resolve(false);
-                });
-            };
-        });
+        // ✅ 从缓存中同步获取数据
+        const tasks = gCachedTasks;
+        const exportData = {
+            version: 1,
+            exportDate: new Date().toISOString(),
+            tasks: tasks
+        };
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        
+        // 仅复制到剪贴板，不生成文件
+        // 优先使用现代 API，失败时使用 execCommand 作为后备方案
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+                await navigator.clipboard.writeText(jsonStr);
+                showToast(`已复制 ${tasks.length} 条任务数据到剪贴板`, "success");
+                return true;
+            } catch (err) {
+                console.error("复制到剪贴板失败 (Modern API)", err);
+                // 如果现代 API 失败，尝试使用 execCommand 作为后备方案
+                return copyToClipboardFallback(jsonStr);
+            }
+        } else {
+            // 浏览器不支持 navigator.clipboard，使用 execCommand
+            return copyToClipboardFallback(jsonStr);
+        }
+    }
+    
+    // 使用 execCommand 的后备剪贴板复制函数
+    function copyToClipboardFallback(text) {
+        try {
+            // 创建一个隐藏的 textarea 元素来承载要复制的文本
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = '0';
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+            textArea.style.opacity = '0';
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                const taskCount = JSON.parse(text).tasks?.length || 0;
+                showToast(`已复制 ${taskCount} 条任务数据到剪贴板`, "success");
+                return true;
+            } else {
+                console.error("execCommand('copy') 失败");
+                showToast("复制到剪贴板失败，请手动操作", "error");
+                return false;
+            }
+        } catch (err) {
+            console.error("复制到剪贴板失败 (Fallback)", err);
+            showToast("复制到剪贴板失败，请手动操作", "error");
+            return false;
+        }
     }
 
     // ========== 数据导入功能 ==========
