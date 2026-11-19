@@ -185,6 +185,156 @@
             margin-top: 20px;
         }
 
+        /* ========== 列表页视图切换（卡片 / 列表） ========== */
+        .list-layout-toggle {
+            display: inline-flex;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f8f9fa;
+            vertical-align: middle;
+        }
+
+        .layout-toggle-btn {
+            border: none;
+            background: transparent;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .layout-toggle-btn:hover {
+            color: #212529;
+        }
+
+        .layout-toggle-btn.active {
+            background: #007bff;
+            color: white;
+        }
+
+        /* ========== 列表视图（单列行式布局，无缩略图，不加载图片） ========== */
+        .task-list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .task-card-container.list-mode {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .task-card-container.list-mode .task-card {
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .task-card-container.list-mode .task-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .task-card-container.list-mode .task-card-header {
+            flex: 1 1 220px;
+            min-width: 0;
+        }
+
+        .task-card-container.list-mode .task-card-meta {
+            flex: 0 1 auto;
+            gap: 8px;
+        }
+
+        .task-card-container.list-mode .task-card-actions {
+            margin-top: 0;
+            margin-left: auto;
+        }
+
+        @media (max-width: 600px) {
+            .task-card-container.list-mode .task-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .task-card-container.list-mode .task-card-actions {
+                margin-left: 0;
+            }
+            .list-title-row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .list-title-row h2 {
+                width: 100%;
+                margin-bottom: 0;
+            }
+        }
+
+        /* ========== 卡片视图缩略图（虚拟滚动懒加载 + 失败自动重试） ========== */
+        .task-card-thumb {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f5f6f8 0%, #eceef1 100%);
+            cursor: zoom-in;
+            flex-shrink: 0;
+        }
+
+        .task-card-thumb img.thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .task-card-thumb img.thumb-img.loaded {
+            opacity: 1;
+        }
+
+        .thumb-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #adb5bd;
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .thumb-spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #dee2e6;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: thumb-spin 0.8s linear infinite;
+        }
+
+        @keyframes thumb-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .thumb-error {
+            cursor: pointer;
+        }
+
+        .thumb-error:hover .thumb-placeholder {
+            color: #868e96;
+        }
+
         .task-card {
             background: white;
             border-radius: 12px;
@@ -467,6 +617,28 @@
                 max-width: 100%;
                 font-size: 14px;
                 padding: 8px 12px;
+            }
+            /* 移动端卡片自适应：单列小尺寸卡片 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+            .task-card-thumb {
+                height: 120px;
+            }
+        }
+
+        @media (min-width: 601px) and (max-width: 900px) {
+            /* 平板 / 小屏 PC 自适应 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+        }
+
+        @media (min-width: 1400px) {
+            /* 大屏 PC 自适应：更小的最小宽度以容纳更多列 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             }
         }
 
@@ -832,7 +1004,13 @@
     </div>
 </div>
 
-<h2>任务列表</h2>
+<div class="list-title-row" style="display:flex; align-items:center; justify-content:space-between; margin-top:20px;">
+    <h2 style="margin:0;">任务列表</h2>
+    <div class="list-layout-toggle" role="group" aria-label="视图切换">
+        <button id="layout-card-btn" class="layout-toggle-btn active" onclick="setLayoutMode('card')" title="卡片视图">🔳 卡片</button>
+        <button id="layout-list-btn" class="layout-toggle-btn" onclick="setLayoutMode('list')" title="列表视图">☰ 列表</button>
+    </div>
+</div>
 <div class="task-card-container" id="task-card-list">
     <!-- 卡片式任务列表将在这里渲染 -->
 </div>
@@ -861,6 +1039,20 @@
     
     // ✅ 任务数据缓存（用于同步复制，避免 iOS 手势上下文丢失）
     let gCachedTasks = [];
+
+    // ✅ 启动时同步"卡片/列表"视图切换按钮的选中态（模式持久化在 localStorage）
+    (function initLayoutToggleUI() {
+        const apply = () => {
+            const cardBtn = document.getElementById('layout-card-btn');
+            const listBtn = document.getElementById('layout-list-btn');
+            if (!cardBtn || !listBtn) return false;
+            const mode = localStorage.getItem('taskLayoutMode') || 'card';
+            cardBtn.classList.toggle('active', mode === 'card');
+            listBtn.classList.toggle('active', mode === 'list');
+            return true;
+        };
+        if (!apply()) document.addEventListener('DOMContentLoaded', apply);
+    })();
 
     const request = indexedDB.open(dbName, 4);
 
@@ -1311,7 +1503,7 @@
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
                 // ✅ 缓存数据，用于同步复制
                 gCachedTasks = [...tasks];
-                displayTasks(tasks);
+                renderList(tasks);
                 updateTaskStats();
                 resolve(true);
             };
@@ -1527,6 +1719,217 @@
     // ========== UI 渲染（改良版方案一：卡片式布局）==========
     let currentMobileTaskId = null; // 当前移动端操作的任务 ID
 
+    // ========== 列表页视图模式（卡片 / 列表） ==========
+    // 'card'：网格卡片视图（带缩略图，虚拟滚动懒加载）
+    // 'list'：单列行式列表视图（无缩略图，不加载图片）
+    let gLayoutMode = localStorage.getItem('taskLayoutMode') || 'card';
+
+    function setLayoutMode(mode) {
+        if (mode !== 'card' && mode !== 'list') return;
+        if (gLayoutMode === mode) return;
+        gLayoutMode = mode;
+        try { localStorage.setItem('taskLayoutMode', mode); } catch (e) { /* 隐私模式下忽略 */ }
+
+        const cardBtn = document.getElementById('layout-card-btn');
+        const listBtn = document.getElementById('layout-list-btn');
+        if (cardBtn) cardBtn.classList.toggle('active', mode === 'card');
+        if (listBtn) listBtn.classList.toggle('active', mode === 'list');
+
+        // 用当前缓存数据按新模式重新渲染
+        renderList(gCachedTasks);
+    }
+
+    // ========== 缩略图虚拟滚动懒加载管理器 ==========
+    // - 仅为进入视口（含预加载边距）的卡片创建 <img>，未滚动到的数据不发起图片请求
+    // - 离开视口一定距离后回收 <img>（保留已成功的 dataURL），控制内存与并发
+    // - 加载失败自动重试（指数退避），最多 THUMB_MAX_RETRY 次；超限后显示"点击重试"
+    const ThumbLoader = (() => {
+        const MAX_RETRY = 3;               // 自动重试上限
+        const RETRY_BASE_DELAY = 800;      // 首次重试延迟(ms)，逐次翻倍
+        const CONCURRENCY = 4;             // 同时下载的图片数量上限
+        const ROOT_MARGIN = '400px 0px';   // 提前 400px 预加载
+
+        const states = new Map();          // key -> { retryCount, timer, loaded }
+        const inflight = new Set();        // 正在下载的 key
+        const queue = [];                  // 等待下载的 key
+        const elements = new Map();        // key -> thumb 容器元素
+        let activeObserver = null;
+
+        function makeObserver() {
+            if (!('IntersectionObserver' in window)) return null;
+            return new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    const key = entry.target.dataset.thumbKey;
+                    if (entry.isIntersecting) enqueue(key, entry.target);
+                    else release(key);
+                });
+            }, { rootMargin: ROOT_MARGIN });
+        }
+
+        function getObserver() {
+            if (!activeObserver) activeObserver = makeObserver();
+            return activeObserver;
+        }
+
+        function getState(key) {
+            if (!states.has(key)) {
+                states.set(key, { retryCount: 0, timer: null, loaded: false });
+            }
+            return states.get(key);
+        }
+
+        function showLoading(el) {
+            el.innerHTML = `<div class="thumb-placeholder"><div class="thumb-spinner"></div><span>加载中…</span></div>`;
+        }
+
+        function showError(el, autoRetrying) {
+            el.classList.add('thumb-error');
+            el.innerHTML = `<div class="thumb-placeholder"><span>🖼️</span><span>${autoRetrying ? '加载失败，自动重试中…' : '加载失败，点击重试'}</span></div>`;
+        }
+
+        function cancelTimer(st) {
+            if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+        }
+
+        function dequeue(key) {
+            const idx = queue.indexOf(key);
+            if (idx >= 0) queue.splice(idx, 1);
+        }
+
+        function pump() {
+            while (inflight.size < CONCURRENCY && queue.length > 0) {
+                const key = queue.shift();
+                const el = elements.get(key);
+                const st = states.get(key);
+                if (!el || !st || st.loaded) continue;
+                if (!el.isConnected) continue; // 已被 DOM 移除
+                startLoad(key, el, st);
+            }
+        }
+
+        function enqueue(key, el) {
+            const st = getState(key);
+            elements.set(key, el);
+
+            if (st.loaded) return; // <img src> 由浏览器缓存自行恢复显示
+            cancelTimer(st);
+            if (inflight.has(key) || queue.includes(key)) return;
+            queue.push(key);
+            pump();
+        }
+
+        // 渲染后调用：观察容器内所有缩略图，进入视口时才发起图片请求
+        function observeAll(container) {
+            const obs = getObserver();
+            const thumbs = container.querySelectorAll('.task-card-thumb');
+            if (!obs) {
+                // 不支持 IntersectionObserver 的旧浏览器：降级为直接加载（仍带重试）
+                thumbs.forEach(el => enqueue(el.dataset.thumbKey, el));
+                return;
+            }
+            thumbs.forEach(el => {
+                obs.observe(el);
+                // IO 首次回调是异步的；对当前已在视口内的元素立即尝试入队，避免闪烁延迟
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight + 400 && rect.bottom > -100) {
+                    enqueue(el.dataset.thumbKey, el);
+                }
+            });
+        }
+
+        // 离开视口：取消排队/重试；已成功的图片保留在 DOM（浏览器缓存），未成功的不发起请求
+        function release(key) {
+            const st = states.get(key);
+            if (!st || st.loaded) return;
+            dequeue(key);
+            cancelTimer(st);
+        }
+
+        function scheduleRetry(key, st) {
+            if (st.retryCount >= MAX_RETRY) {
+                const el = elements.get(key);
+                if (el && el.isConnected && !st.loaded) showError(el, false);
+                return;
+            }
+            st.retryCount++;
+            const delay = RETRY_BASE_DELAY * Math.pow(2, st.retryCount - 1);
+            st.timer = setTimeout(() => {
+                st.timer = null;
+                const curEl = elements.get(key);
+                if (!curEl || !curEl.isConnected || st.loaded) return;
+                queue.push(key);
+                pump();
+            }, delay);
+        }
+
+        function startLoad(key, el, st) {
+            inflight.add(key);
+            const img = el.querySelector('img.thumb-img');
+            if (!img) { inflight.delete(key); pump(); return; } // DOM 异常，等待下次入视口
+
+            showLoading(el); // 显示加载占位（会移除旧 <img>，需在引用保存之后执行）
+
+            const finish = () => { inflight.delete(key); pump(); };
+
+            const onLoad = () => {
+                img.removeEventListener('load', onLoad);
+                img.removeEventListener('error', onErr);
+                st.loaded = true;
+                st.retryCount = 0;
+                img.classList.add('loaded');
+                el.classList.remove('thumb-error');
+                finish();
+            };
+            const onErr = () => {
+                img.removeEventListener('load', onLoad);
+                img.removeEventListener('error', onErr);
+                finish();
+                if (elements.get(key) === el && el.isConnected) showError(el, st.retryCount < MAX_RETRY);
+                scheduleRetry(key, st);
+            };
+
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onErr);
+
+            // 通过重新赋值 src 触发真实网络请求（未进入队列的卡片不会设置带时间戳的 src，即不加载）
+            img.src = el.dataset.thumbSrc;
+        }
+
+        // 手动重试（点击错误占位）
+        function manualRetry(key) {
+            const st = states.get(key);
+            const el = elements.get(key);
+            if (!st || !el) return;
+            cancelTimer(st);
+            st.retryCount = 0;
+            st.loaded = false;
+            el.classList.remove('thumb-error');
+            const img = el.querySelector('img.thumb-img');
+            if (img) img.removeAttribute('src');
+            enqueue(key, el);
+        }
+
+        // 渲染前调用：解除旧 DOM 引用并断开观察器
+        function reset() {
+            states.forEach(st => cancelTimer(st));
+            states.clear();
+            elements.clear();
+            queue.length = 0;
+            inflight.clear();
+            if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
+        }
+
+        return { reset, manualRetry, observeAll };
+    })();
+
+    // 统一入口：根据当前视图模式渲染列表（tasks 为已完成筛选/搜索的数据）
+    function renderList(tasks) {
+        ThumbLoader.reset();
+        const container = document.getElementById("task-card-list");
+        container.classList.toggle("list-mode", gLayoutMode === 'list');
+        displayTasks(tasks);
+    }
+
     function displayTasks(tasks) {
         const container = document.getElementById("task-card-list");
         container.innerHTML = "";
@@ -1554,6 +1957,7 @@
             const escapedRemark = escapeHtml(task.remark || "");
             const card = document.createElement("div");
             card.className = "task-card";
+            card.dataset.taskId = task.id;
             
             // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
             const sourceType = getSourceType(task.text || "");
@@ -1591,7 +1995,26 @@
                 sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
             }
 
+            // 生成缩略图 HTML（仅卡片视图 + JM/Pixiv 类型）
+            // 注意：src 不在此处设置——只有当卡片滚动进入视口时，
+            // ThumbLoader 才会把 data-thumb-src 写入 <img>.src 发起真实请求（虚拟滚动懒加载）
+            let thumbHtml = '';
+            if (gLayoutMode === 'card' && (isJM || isPixiv)) {
+                const previewUrl = generatePreviewUrl(task.text || "");
+                if (previewUrl) {
+                    const safeSrc = escapeHtml(previewUrl);
+                    const thumbKey = `${task.id}`;
+                    thumbHtml = `
+                        <div class="task-card-thumb" data-thumb-key="${thumbKey}" data-thumb-src="${safeSrc}"
+                             onclick="onThumbClick(event, '${thumbKey}')" title="点击预览">
+                            <img class="thumb-img" alt="" decoding="async" draggable="false">
+                            <div class="thumb-placeholder"><span>🖼️</span><span>等待加载</span></div>
+                        </div>`;
+                }
+            }
+
             card.innerHTML = `
+                ${thumbHtml}
                 <div class="task-card-header">
                     <div class="task-card-title-wrapper">
                         <div class="task-card-title">${escapedText}</div>
@@ -1623,6 +2046,25 @@
             `;
             container.appendChild(card);
         });
+
+        // ✅ 卡片视图：注册缩略图虚拟滚动观察器（仅为进入视口的卡片发起图片请求）
+        if (gLayoutMode === 'card') {
+            requestAnimationFrame(() => ThumbLoader.observeAll(container));
+        }
+    }
+
+    // 点击缩略图：加载失败时手动重试，否则打开大图预览
+    function onThumbClick(event, thumbKey) {
+        event.stopPropagation();
+        const el = document.querySelector(`.task-card-thumb[data-thumb-key="${thumbKey}"]`);
+        if (!el) return;
+        if (el.classList.contains('thumb-error')) {
+            ThumbLoader.manualRetry(thumbKey);
+            return;
+        }
+        const card = el.closest('.task-card');
+        const idAttr = card?.dataset.taskId;
+        if (idAttr) previewTask(parseInt(idAttr, 10));
     }
 
     function hideAllMoreMenus() {
@@ -1879,7 +2321,7 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
@@ -1893,7 +2335,7 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
@@ -1953,7 +2395,7 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
