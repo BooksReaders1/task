@@ -167,6 +167,18 @@ if  {
 
 ## 📝 更新日志
 
+============= 2026-11-20 09:46:51 : **Refactor task saving with Promise and duplicate check** ==========
+
+<center>保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示</center>
+
+========== ==== commit end =================
+
+============= 2026-11-20 09:45:08 : **Refactor ID extraction logic to ignore mentions** ==========
+
+<center>提取作品 ID 时忽略 @昵称: 前缀中的数字（如 @我的123哈哈: 456789 提取 456789），支持半角/全角冒号与多段提及；预览图、本地预览、智能跳转、随机作品等全部同步生效</center>
+
+========== ==== commit end =================
+
 ============= 2026-11-20 09:05:00 : **Add card view** ==========
 
 <center>增加卡片页视图，自动加载预览图</center>
