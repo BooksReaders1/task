@@ -1488,11 +1488,18 @@
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
         // ✅ 不再保存 previewUrl 到数据库，改为实时计算
-        const tx = db.transaction([storeName], "readwrite");
-        tx.objectStore(storeName).add(task).onsuccess = () => {
-            applyCurrentFilter();
-            clearTaskInputs();
-        };
+        // ★ 返回真正等待写入完成的 Promise：供 saveTask await，写入失败可被感知
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction([storeName], "readwrite");
+            tx.objectStore(storeName).add(task);
+            tx.oncomplete = () => {
+                applyCurrentFilter();   // 保留原行为：刷新列表
+                clearTaskInputs();      // 保留原行为：清空输入框
+                resolve(true);
+            };
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error("写入事务被中止"));
+        });
     }
 
     function updateTaskInDB(taskId, updates) {
@@ -2282,11 +2289,59 @@
         }
     }
 
-    function saveTask() {
+    // ★ 功能1：保存时查重
+    const DUP_CHECK_MIN_LEN = 5; // 仅对≥5位的“作品ID”查重（与智能跳转/预览一致）；改为 1 则任意数字都查
+    let gSaveInProgress = false; // 保存锁：showConfirm 是非模态 toast，防止确认期间重复触发保存
+    
+    // 找出所有“提取出的作品 ID === num”的已有任务，按创建时间倒序
+    async function findTasksByNumber(num) {
+        const all = await new Promise((resolve, reject) => {
+            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        return all
+            .filter(t => extractNumber(t.text || "") === num) // 同一套提取规则（同样忽略 @昵称 数字）
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }
+    
+    async function saveTask() {
+        if (gSaveInProgress) return; // 已有保存/确认在进行中，忽略本次触发
+    
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
         if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
-        addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+    
+        gSaveInProgress = true;
+        try {
+            const num = extractNumber(text); // ① 提取 ID（自动忽略 @昵称: 中的数字）
+    
+            // ② 查重
+            if (num && num.length >= DUP_CHECK_MIN_LEN) {
+                const duplicates = await findTasksByNumber(num);
+                if (duplicates.length > 0) {
+                    const dup = duplicates[0]; // 最近一条重复任务
+                    const snippet = (dup.text || "").trim();
+                    const shortText = snippet.length > 20 ? snippet.slice(0, 20) + "…" : snippet;
+                    // showConfirm 内部会 escapeHtml(message)，这里传原始文本，切勿预先转义
+                    const ok = await showConfirm(
+                        `⚠️ 作品 ID ${num} 已存在（共 ${duplicates.length} 条，如“${shortText}”，状态：${dup.status || "未使用"}）。是否仍要保存？`
+                    );
+                    if (!ok) { // 点“取消”或 10 秒自动取消，都视为不保存
+                        showToast("已取消保存", "info");
+                        return; // 保留输入框内容，方便修改后再存
+                    }
+                }
+            }
+    
+            // ③ 无重复，或用户确认继续 → 写库
+            await addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+        } catch (err) {
+            console.error("保存任务失败", err);
+            showToast("❌ 保存失败，请重试", "error");
+        } finally {
+            gSaveInProgress = false;
+        }
     }
 
     function clearTaskInputs() {
