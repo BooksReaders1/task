@@ -2398,25 +2398,24 @@
     function randomWork() {
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
-            let tasks = req.result;
-            // 筛选出 pixiv 和 JM 类型的任务
+            const tasks = req.result;
+            // 筛选：JM/Pixiv 类型，且排除“已失效”任务
             const validTasks = tasks.filter(t => {
+                if (t.status === "已失效") return false;   // ★ 新增：排除已失效
                 const sourceType = getSourceType(t.text);
                 return sourceType === 'pixiv' || sourceType === 'jm';
             });
-            
+    
             if (validTasks.length === 0) {
                 showToast("❌ 没有可用的 Pixiv 或 JM 作品", "warning");
                 return;
             }
-            
-            // 随机选择一个
+    
             const randomIndex = Math.floor(Math.random() * validTasks.length);
             const selectedTask = validTasks[randomIndex];
             const sourceType = getSourceType(selectedTask.text);
             const num = extractNumber(selectedTask.text);
-            
-            // 根据类型跳转到对应页面
+    
             if (sourceType === 'pixiv') {
                 const url = `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
                 window.open(url, '_blank');
