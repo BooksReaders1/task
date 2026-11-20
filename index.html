@@ -266,6 +266,9 @@
             .task-card-container.list-mode .task-card-actions {
                 margin-left: 0;
             }
+            .task-card-container.list-mode .task-card-header {
+                flex: 0 0 auto;   /* 列方向下高度随内容，不再固定 220px */
+            }
             .list-title-row {
                 flex-wrap: wrap;
                 gap: 8px;
@@ -1739,22 +1742,22 @@
         renderList(gCachedTasks);
     }
 
-    // ========== 缩略图虚拟滚动懒加载管理器 ==========
-    // - 仅为进入视口（含预加载边距）的卡片创建 <img>，未滚动到的数据不发起图片请求
-    // - 离开视口一定距离后回收 <img>（保留已成功的 dataURL），控制内存与并发
-    // - 加载失败自动重试（指数退避），最多 THUMB_MAX_RETRY 次；超限后显示"点击重试"
+   // ========== 缩略图虚拟滚动懒加载管理器 ==========
+    // - 仅为进入视口（含预加载边距）的卡片发起图片请求，未滚动到的数据不加载
+    // - <img> 始终保留在 DOM 中，占位层只覆盖、不删除 img
+    // - 加载失败自动重试（指数退避），最多 MAX_RETRY 次；超限后显示"点击重试"
     const ThumbLoader = (() => {
         const MAX_RETRY = 3;               // 自动重试上限
         const RETRY_BASE_DELAY = 800;      // 首次重试延迟(ms)，逐次翻倍
         const CONCURRENCY = 4;             // 同时下载的图片数量上限
         const ROOT_MARGIN = '400px 0px';   // 提前 400px 预加载
-
+    
         const states = new Map();          // key -> { retryCount, timer, loaded }
         const inflight = new Set();        // 正在下载的 key
         const queue = [];                  // 等待下载的 key
         const elements = new Map();        // key -> thumb 容器元素
         let activeObserver = null;
-
+    
         function makeObserver() {
             if (!('IntersectionObserver' in window)) return null;
             return new IntersectionObserver(entries => {
@@ -1765,37 +1768,52 @@
                 });
             }, { rootMargin: ROOT_MARGIN });
         }
-
+    
         function getObserver() {
             if (!activeObserver) activeObserver = makeObserver();
             return activeObserver;
         }
-
+    
         function getState(key) {
             if (!states.has(key)) {
                 states.set(key, { retryCount: 0, timer: null, loaded: false });
             }
             return states.get(key);
         }
-
+    
+        // ★ 修改点①：只更新占位层内容，绝不覆盖 el.innerHTML，<img> 始终留在 DOM 中
         function showLoading(el) {
-            el.innerHTML = `<div class="thumb-placeholder"><div class="thumb-spinner"></div><span>加载中…</span></div>`;
+            el.classList.remove('thumb-error');
+            let ph = el.querySelector('.thumb-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'thumb-placeholder';
+                el.appendChild(ph);
+            }
+            ph.innerHTML = `<div class="thumb-spinner"></div><span>加载中…</span>`;
         }
-
+    
+        // ★ 修改点②：同理，错误提示也只改占位层，保留 <img>（否则自动重试/点击重试永远找不到 img）
         function showError(el, autoRetrying) {
             el.classList.add('thumb-error');
-            el.innerHTML = `<div class="thumb-placeholder"><span>🖼️</span><span>${autoRetrying ? '加载失败，自动重试中…' : '加载失败，点击重试'}</span></div>`;
+            let ph = el.querySelector('.thumb-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'thumb-placeholder';
+                el.appendChild(ph);
+            }
+            ph.innerHTML = `<span>🖼️</span><span>${autoRetrying ? '加载失败，自动重试中…' : '加载失败，点击重试'}</span>`;
         }
-
+    
         function cancelTimer(st) {
             if (st.timer) { clearTimeout(st.timer); st.timer = null; }
         }
-
+    
         function dequeue(key) {
             const idx = queue.indexOf(key);
             if (idx >= 0) queue.splice(idx, 1);
         }
-
+    
         function pump() {
             while (inflight.size < CONCURRENCY && queue.length > 0) {
                 const key = queue.shift();
@@ -1806,18 +1824,18 @@
                 startLoad(key, el, st);
             }
         }
-
+    
         function enqueue(key, el) {
             const st = getState(key);
             elements.set(key, el);
-
-            if (st.loaded) return; // <img src> 由浏览器缓存自行恢复显示
+    
+            if (st.loaded) return; // 修复后此注释才真正成立：img 一直在 DOM 里且带 src，滚回视口由浏览器缓存直接恢复显示
             cancelTimer(st);
             if (inflight.has(key) || queue.includes(key)) return;
             queue.push(key);
             pump();
         }
-
+    
         // 渲染后调用：观察容器内所有缩略图，进入视口时才发起图片请求
         function observeAll(container) {
             const obs = getObserver();
@@ -1836,7 +1854,7 @@
                 }
             });
         }
-
+    
         // 离开视口：取消排队/重试；已成功的图片保留在 DOM（浏览器缓存），未成功的不发起请求
         function release(key) {
             const st = states.get(key);
@@ -1844,7 +1862,7 @@
             dequeue(key);
             cancelTimer(st);
         }
-
+    
         function scheduleRetry(key, st) {
             if (st.retryCount >= MAX_RETRY) {
                 const el = elements.get(key);
@@ -1861,41 +1879,53 @@
                 pump();
             }, delay);
         }
-
+    
+        // ★ 修改点③：startLoad —— showLoading 不再删除 img；成功时移除占位层；回调加“过期”防护
         function startLoad(key, el, st) {
             inflight.add(key);
             const img = el.querySelector('img.thumb-img');
-            if (!img) { inflight.delete(key); pump(); return; } // DOM 异常，等待下次入视口
-
-            showLoading(el); // 显示加载占位（会移除旧 <img>，需在引用保存之后执行）
-
-            const finish = () => { inflight.delete(key); pump(); };
-
+            if (!img) { inflight.delete(key); pump(); return; } // 兜底保留：修复后正常情况下永远不会命中
+    
+            showLoading(el); // 现在只替换占位层内容，<img> 原地不动、仍在 DOM 中
+    
+            const finish = () => {
+                // 只有回调仍属于当前这次渲染的 DOM 时才清理 inflight，
+                // 防止重渲染后旧图片的迟到回调误删新一轮的同名 key
+                if (elements.get(key) === el) inflight.delete(key);
+                pump();
+            };
+    
             const onLoad = () => {
                 img.removeEventListener('load', onLoad);
                 img.removeEventListener('error', onErr);
                 st.loaded = true;
                 st.retryCount = 0;
-                img.classList.add('loaded');
-                el.classList.remove('thumb-error');
+                if (elements.get(key) === el && el.isConnected) {
+                    img.classList.add('loaded');   // opacity 0 -> 1，图片淡入（img 就在 DOM 里，立刻可见）
+                    el.classList.remove('thumb-error');
+                    const ph = el.querySelector('.thumb-placeholder');
+                    if (ph) ph.remove();           // ★ 关键：移除盖在图片上的占位层，图片才露得出来
+                }
                 finish();
             };
             const onErr = () => {
                 img.removeEventListener('load', onLoad);
                 img.removeEventListener('error', onErr);
                 finish();
-                if (elements.get(key) === el && el.isConnected) showError(el, st.retryCount < MAX_RETRY);
+                // 过期回调（容器已被重渲染替换）：不显示错误、不安排重试，避免污染新一轮渲染
+                if (elements.get(key) !== el || !el.isConnected) return;
+                showError(el, st.retryCount < MAX_RETRY);
                 scheduleRetry(key, st);
             };
-
+    
             img.addEventListener('load', onLoad);
             img.addEventListener('error', onErr);
-
-            // 通过重新赋值 src 触发真实网络请求（未进入队列的卡片不会设置带时间戳的 src，即不加载）
+    
+            // 这一行本身没变；变的是：此刻 img 仍在 DOM 中，加载成功后用户能真正看到
             img.src = el.dataset.thumbSrc;
         }
-
-        // 手动重试（点击错误占位）
+    
+        // ★ 修改点④：手动重试 —— img 现在永远找得到，清 src 真正生效；并立即给出“加载中”反馈
         function manualRetry(key) {
             const st = states.get(key);
             const el = elements.get(key);
@@ -1904,11 +1934,15 @@
             st.retryCount = 0;
             st.loaded = false;
             el.classList.remove('thumb-error');
-            const img = el.querySelector('img.thumb-img');
-            if (img) img.removeAttribute('src');
+            const img = el.querySelector('img.thumb-img'); // 修复后这里必然能拿到 img
+            if (img) {
+                img.classList.remove('loaded');
+                img.removeAttribute('src'); // 清掉旧 src，保证重新赋同一个 URL 也会重新走加载流程
+            }
+            showLoading(el); // 点击后立刻从“失败”切回“加载中”反馈
             enqueue(key, el);
         }
-
+    
         // 渲染前调用：解除旧 DOM 引用并断开观察器
         function reset() {
             states.forEach(st => cancelTimer(st));
@@ -1918,7 +1952,7 @@
             inflight.clear();
             if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
         }
-
+    
         return { reset, manualRetry, observeAll };
     })();
 
