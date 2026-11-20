@@ -1447,11 +1447,25 @@
         });
     }
 
-    // ========== 核心逻辑 ==========
+    // ========== 作品 ID 提取 ==========
+    // ★ 功能2：忽略 "@昵称:" 提及/转发前缀中的数字。
+    // 昵称里常带数字（如 @我的123哈哈），旧逻辑会把它和真实 ID 拼接：
+    //   "@我的123哈哈: 456789" → 旧结果 "123456789"（错误，且会被误判为 Pixiv）
+    // 现在先把 "@昵称:" 整段（含冒号）剔除，再提取，得到 "456789"。
+    // 规则：
+    //   - 半角冒号 ":" 和全角冒号 "：" 都支持
+    //   - 必须存在完整的 "@...:" 结构才剔除；只有 @昵称 没有冒号时不动它
+    //   - 昵称部分不允许包含 冒号/@/换行，防止跨行、跨段误删正文
+    //   - 多段提及（如 "@a1: @b2: 456789"）会全部剔除
+    function stripMentions(text) {
+        return String(text || "").replace(/@[^:：@\n]*[:：]/g, "");
+    }
+    
     function extractNumber(text) {
-        const m = [...text.matchAll(/(\d{9})/g)];
+        const cleaned = stripMentions(text);              // ★ 唯一新增：先剔除 @昵称: 段
+        const m = [...cleaned.matchAll(/(\d{9})/g)];      // 优先取第一个连续 9 位数字（Pixiv）
         if (m.length > 0) return m[0][0];
-        const d = text.match(/\d/g);
+        const d = cleaned.match(/\d/g);                   // 否则拼接所有数字取前 9 位（保留原有逻辑）
         return d ? d.join('').slice(0, 9) : "";
     }
 
