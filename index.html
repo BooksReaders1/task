@@ -1212,6 +1212,21 @@
     // ========== 更新日志数据（从 README 提取，写死在代码中）==========
     const CHANGELOG_DATA = [
         {
+            date: "2026-11-20 09:46:51",
+            title: "Refactor task saving with Promise and duplicate check",
+            description: "保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示"
+        },
+        {
+            date: "2026-11-20 09:45:08",
+            title: "Refactor ID extraction logic to ignore mentions",
+            description: "提取作品 ID 时忽略 @昵称: 前缀中的数字（如 @我的123哈哈: 456789 提取 456789），支持半角/全角冒号与多段提及；预览图、本地预览、智能跳转、随机作品等全部同步生效"
+        },
+        {
+            date: "2026-11-20 09:05:00",
+            title: "Add card view",
+            description: "增加卡片页视图，自动加载预览图"
+        },
+        {
             date: "2026-05-27 15:05:00",
             title: "Disable local preview functionality",
             description: "暂时注释掉本地预览相关代码，屏蔽本地预览功能"
@@ -1447,11 +1462,25 @@
         });
     }
 
-    // ========== 核心逻辑 ==========
+    // ========== 作品 ID 提取 ==========
+    // ★ 功能2：忽略 "@昵称:" 提及/转发前缀中的数字。
+    // 昵称里常带数字（如 @我的123哈哈），旧逻辑会把它和真实 ID 拼接：
+    //   "@我的123哈哈: 456789" → 旧结果 "123456789"（错误，且会被误判为 Pixiv）
+    // 现在先把 "@昵称:" 整段（含冒号）剔除，再提取，得到 "456789"。
+    // 规则：
+    //   - 半角冒号 ":" 和全角冒号 "：" 都支持
+    //   - 必须存在完整的 "@...:" 结构才剔除；只有 @昵称 没有冒号时不动它
+    //   - 昵称部分不允许包含 冒号/@/换行，防止跨行、跨段误删正文
+    //   - 多段提及（如 "@a1: @b2: 456789"）会全部剔除
+    function stripMentions(text) {
+        return String(text || "").replace(/@[^:：@\n]*[:：]/g, "");
+    }
+    
     function extractNumber(text) {
-        const m = [...text.matchAll(/(\d{9})/g)];
+        const cleaned = stripMentions(text);              // ★ 唯一新增：先剔除 @昵称: 段
+        const m = [...cleaned.matchAll(/(\d{9})/g)];      // 优先取第一个连续 9 位数字（Pixiv）
         if (m.length > 0) return m[0][0];
-        const d = text.match(/\d/g);
+        const d = cleaned.match(/\d/g);                   // 否则拼接所有数字取前 9 位（保留原有逻辑）
         return d ? d.join('').slice(0, 9) : "";
     }
 
@@ -1474,11 +1503,18 @@
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
         // ✅ 不再保存 previewUrl 到数据库，改为实时计算
-        const tx = db.transaction([storeName], "readwrite");
-        tx.objectStore(storeName).add(task).onsuccess = () => {
-            applyCurrentFilter();
-            clearTaskInputs();
-        };
+        // ★ 返回真正等待写入完成的 Promise：供 saveTask await，写入失败可被感知
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction([storeName], "readwrite");
+            tx.objectStore(storeName).add(task);
+            tx.oncomplete = () => {
+                applyCurrentFilter();   // 保留原行为：刷新列表
+                clearTaskInputs();      // 保留原行为：清空输入框
+                resolve(true);
+            };
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error("写入事务被中止"));
+        });
     }
 
     function updateTaskInDB(taskId, updates) {
@@ -2268,11 +2304,59 @@
         }
     }
 
-    function saveTask() {
+    // ★ 功能1：保存时查重
+    const DUP_CHECK_MIN_LEN = 5; // 仅对≥5位的“作品ID”查重（与智能跳转/预览一致）；改为 1 则任意数字都查
+    let gSaveInProgress = false; // 保存锁：showConfirm 是非模态 toast，防止确认期间重复触发保存
+    
+    // 找出所有“提取出的作品 ID === num”的已有任务，按创建时间倒序
+    async function findTasksByNumber(num) {
+        const all = await new Promise((resolve, reject) => {
+            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        return all
+            .filter(t => extractNumber(t.text || "") === num) // 同一套提取规则（同样忽略 @昵称 数字）
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }
+    
+    async function saveTask() {
+        if (gSaveInProgress) return; // 已有保存/确认在进行中，忽略本次触发
+    
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
         if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
-        addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+    
+        gSaveInProgress = true;
+        try {
+            const num = extractNumber(text); // ① 提取 ID（自动忽略 @昵称: 中的数字）
+    
+            // ② 查重
+            if (num && num.length >= DUP_CHECK_MIN_LEN) {
+                const duplicates = await findTasksByNumber(num);
+                if (duplicates.length > 0) {
+                    const dup = duplicates[0]; // 最近一条重复任务
+                    const snippet = (dup.text || "").trim();
+                    const shortText = snippet.length > 20 ? snippet.slice(0, 20) + "…" : snippet;
+                    // showConfirm 内部会 escapeHtml(message)，这里传原始文本，切勿预先转义
+                    const ok = await showConfirm(
+                        `⚠️ 作品 ID ${num} 已存在（共 ${duplicates.length} 条，如“${shortText}”，状态：${dup.status || "未使用"}）。是否仍要保存？`
+                    );
+                    if (!ok) { // 点“取消”或 10 秒自动取消，都视为不保存
+                        showToast("已取消保存", "info");
+                        return; // 保留输入框内容，方便修改后再存
+                    }
+                }
+            }
+    
+            // ③ 无重复，或用户确认继续 → 写库
+            await addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+        } catch (err) {
+            console.error("保存任务失败", err);
+            showToast("❌ 保存失败，请重试", "error");
+        } finally {
+            gSaveInProgress = false;
+        }
     }
 
     function clearTaskInputs() {
