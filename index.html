@@ -898,6 +898,73 @@
             margin: 0;
             text-align: left;
         }
+
+        /* ========== 粘贴预览卡 ========== */
+        .paste-preview-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: none; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        .paste-preview-overlay.show { display: flex; }
+        
+        .paste-preview-card {
+            background: white; border-radius: 12px;
+            width: 100%; max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            animation: paste-card-in 0.2s ease;
+        }
+        @keyframes paste-card-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        
+        .paste-preview-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+        }
+        .paste-preview-title { font-weight: 600; color: #2c3e50; font-size: 15px; }
+        .paste-preview-close {
+            background: none; border: none; font-size: 22px; color: #6c757d;
+            cursor: pointer; line-height: 1; padding: 0 4px;
+        }
+        .paste-preview-close:hover { color: #212529; }
+        
+        .paste-preview-thumb {
+            position: relative; width: 100%; height: 180px;
+            background: linear-gradient(135deg, #f5f6f8 0%, #eceef1 100%);
+            overflow: hidden;
+        }
+        .paste-preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .paste-preview-info { padding: 14px 16px; }
+        .paste-preview-badges {
+            display: flex; gap: 8px; align-items: center;
+            margin-bottom: 8px; flex-wrap: wrap;
+        }
+        .paste-preview-id { font-size: 13px; color: #007bff; font-weight: 600; }
+        .paste-preview-dup-tag {
+            padding: 2px 8px; border-radius: 4px;
+            background: #e2e3e5; color: #6c757d;
+            font-size: 11px; font-weight: 600;
+        }
+        .paste-preview-text {
+            font-size: 14px; color: #2c3e50;
+            word-break: break-word; line-height: 1.5;
+            max-height: 60px; overflow-y: auto;
+        }
+        
+        /* 重复：缩略图与文本灰掉 */
+        .paste-preview-card.is-duplicate .paste-preview-thumb,
+        .paste-preview-card.is-duplicate .paste-preview-text {
+            opacity: 0.45;
+            filter: grayscale(0.6);
+        }
+        
+        .paste-preview-actions { display: flex; gap: 8px; padding: 0 16px 16px; }
+        .paste-preview-actions .unified-button { flex: 1; margin: 4px 0; }
     </style>
 </head>
 <body>
@@ -1028,6 +1095,25 @@
     <button class="mobile-action-item" id="mobile-action-edit">✏️ 编辑任务</button>
     <button class="mobile-action-item danger" id="mobile-action-delete">🗑️ 删除任务</button>
     <button class="mobile-action-close" id="mobile-action-close">关闭</button>
+</div>
+
+<!-- 粘贴预览卡 -->
+<div id="paste-preview-overlay" class="paste-preview-overlay" onclick="closePastePreview()">
+    <div class="paste-preview-card" id="paste-preview-card" onclick="event.stopPropagation()">
+        <div class="paste-preview-header">
+            <span class="paste-preview-title">📋 粘贴预览</span>
+            <button class="paste-preview-close" onclick="closePastePreview()" title="关闭">&times;</button>
+        </div>
+        <div class="paste-preview-thumb" id="paste-preview-thumb"></div>
+        <div class="paste-preview-info">
+            <div class="paste-preview-badges" id="paste-preview-badges"></div>
+            <div class="paste-preview-text" id="paste-preview-text"></div>
+        </div>
+        <div class="paste-preview-actions">
+            <button class="unified-button btn-cancel" onclick="closePastePreview()">取消</button>
+            <button class="unified-button btn-save" id="paste-preview-add" onclick="confirmPasteAdd()">✅ 加入</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -2511,15 +2597,103 @@
         };
     }
 
+    // ========== 粘贴预览卡（单个）==========
+    let gPastePreviewData = null; // { text, num, sourceType, previewUrl, isDuplicate }
+    
     async function pasteFromClipboard() {
         try {
             const text = await navigator.clipboard.readText();
             if (!text.trim()) { showToast("剪贴板为空", "warning"); return; }
-            document.getElementById('task-text').value = text;
-            saveTask();
+            openPastePreview(text);
         } catch (err) {
             showToast("无法读取剪贴板，请在安全环境（HTTPS/localhost）中使用", "error");
         }
+    }
+    
+    async function openPastePreview(text) {
+        const trimmed = text.trim();
+        const num = extractNumber(trimmed);
+        const sourceType = getSourceType(trimmed);
+        const previewUrl = generatePreviewUrl(trimmed);
+    
+        // 查重（复用保存时的查重逻辑）
+        let isDuplicate = false;
+        if (num && num.length >= DUP_CHECK_MIN_LEN) {
+            const duplicates = await findTasksByNumber(num);
+            isDuplicate = duplicates.length > 0;
+        }
+    
+        gPastePreviewData = { text: trimmed, num, sourceType, previewUrl, isDuplicate };
+    
+        const overlay  = document.getElementById('paste-preview-overlay');
+        const card     = document.getElementById('paste-preview-card');
+        const thumbBox = document.getElementById('paste-preview-thumb');
+        const badges   = document.getElementById('paste-preview-badges');
+        const textBox  = document.getElementById('paste-preview-text');
+        const addBtn   = document.getElementById('paste-preview-add');
+    
+        card.classList.remove('is-duplicate');
+        thumbBox.innerHTML = '';
+        badges.innerHTML = '';
+    
+        // 缩略图（复用 generatePreviewUrl；加载中/失败占位）
+        if (previewUrl) {
+            const ph = document.createElement('div');
+            ph.className = 'thumb-placeholder';
+            ph.innerHTML = '<div class="thumb-spinner"></div><span>加载中…</span>';
+            thumbBox.appendChild(ph);
+    
+            const img = document.createElement('img');
+            img.alt = '';
+            img.decoding = 'async';
+            img.onload  = () => ph.remove();
+            img.onerror = () => { ph.innerHTML = '<span>🖼️</span><span>预览图加载失败</span>'; };
+            img.src = previewUrl;
+            thumbBox.appendChild(img);
+        } else {
+            thumbBox.innerHTML = '<div class="thumb-placeholder"><span>📄</span><span>无预览图</span></div>';
+        }
+    
+        // 来源徽章 + ID + 重复标记
+        if (sourceType === 'pixiv') {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag tag-pixiv">Pixiv</span>');
+        } else if (sourceType === 'jm') {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag tag-jm">JM</span>');
+        } else {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag" style="background:#8b5cf6;color:white;">其他</span>');
+        }
+        if (num && num.length >= DUP_CHECK_MIN_LEN) {
+            badges.insertAdjacentHTML('beforeend', `<span class="paste-preview-id">#${escapeHtml(num)}</span>`);
+        }
+        if (isDuplicate) {
+            badges.insertAdjacentHTML('beforeend', '<span class="paste-preview-dup-tag">重复</span>');
+            card.classList.add('is-duplicate');
+            addBtn.innerHTML = '⚠️ 仍要加入';
+        } else {
+            addBtn.innerHTML = '✅ 加入';
+        }
+    
+        textBox.textContent = trimmed;
+        overlay.classList.add('show');
+    }
+    
+    async function confirmPasteAdd() {
+        const data = gPastePreviewData;
+        if (!data) return;
+        gPastePreviewData = null;
+        document.getElementById('paste-preview-overlay').classList.remove('show');
+        try {
+            await addTaskToIndexedDB({ text: data.text, remark: "", status: "未使用", createdAt: Date.now() });
+            showToast("✅ 已加入任务", "success");
+        } catch (err) {
+            console.error("粘贴加入失败", err);
+            showToast("❌ 加入失败，请重试", "error");
+        }
+    }
+    
+    function closePastePreview() {
+        document.getElementById('paste-preview-overlay').classList.remove('show');
+        gPastePreviewData = null;
     }
 
     // ========== 数据导出功能 ==========
