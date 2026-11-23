@@ -1263,9 +1263,12 @@
     // ========== 安全工具函数 ==========
     function escapeHtml(text) {
         if (typeof text !== 'string') return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return text
+            .replace(/&/g, '&amp;')   // & 必须最先替换
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // ========== Toast 通知函数 ==========
