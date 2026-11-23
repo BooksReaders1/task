@@ -167,6 +167,30 @@ if  {
 
 ## 📝 更新日志
 
+============= 2026-11-23 11:30:00 : **Add paste preview card and incremental card rendering** ==========
+
+<center>📋 粘贴后不再直接入库，先弹预览卡展示缩略图、来源徽章、ID 与重复标记，确认后才加入；卡片视图改为增量 diff 渲染，新增/删除/修改单个卡片时仅加载对应缩略图，不再全量重载</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 11:10:00 : **Random work uses unified preview page** ==========
+
+<center>🎲 随机作品按钮改用新重构的统一预览页 PrictureView，与 ✨ 收藏链接按钮共用同一落地页，旧 TestPicture / pictureForP 两套页面不再使用</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 10:50:00 : **Clear inputs when cancel save** ==========
+
+<center>保存时触发重复校验并选择取消保存（含 10 秒自动取消）时，同步清空任务文本与备注输入框</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 10:30:00 : **Fix XSS vulnerability in escapeHtml** ==========
+
+<center>修复 escapeHtml 未转义引号导致任务文本可闭合属性引号注入脚本的 XSS 风险；改为同时转义 &amp; &lt; &gt; " ' 五个字符</center>
+
+========== ==== commit end =================
+
 ============= 2026-11-20 09:46:51 : **Refactor task saving with Promise and duplicate check** ==========
 
 <center>保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示</center>
