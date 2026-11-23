@@ -1301,6 +1301,26 @@
     // ========== 更新日志数据（从 README 提取，写死在代码中）==========
     const CHANGELOG_DATA = [
         {
+            date: "2026-11-23 11:30:00",
+            title: "Add paste preview card and incremental card rendering",
+            description: "📋 粘贴后不再直接入库，先弹预览卡展示缩略图、来源徽章、ID 与重复标记，确认后才加入；卡片视图改为增量 diff 渲染，新增/删除/修改单个卡片时仅加载对应缩略图，不再全量重载"
+        },
+        {
+            date: "2026-11-23 11:10:00",
+            title: "Random work uses unified preview page",
+            description: "🎲 随机作品按钮改用新重构的统一预览页 PrictureView，与 ✨ 收藏链接按钮共用同一落地页，旧 TestPicture / pictureForP 两套页面不再使用"
+        },
+        {
+            date: "2026-11-23 10:50:00",
+            title: "Clear inputs when cancel save",
+            description: "保存时触发重复校验并选择取消保存（含 10 秒自动取消）时，同步清空任务文本与备注输入框"
+        },
+        {
+            date: "2026-11-23 10:30:00",
+            title: "Fix XSS vulnerability in escapeHtml",
+            description: "修复 escapeHtml 未转义引号导致任务文本可闭合属性引号注入脚本的 XSS 风险；改为同时转义 & < > \" ' 五个字符"
+        },
+        {
             date: "2026-11-20 09:46:51",
             title: "Refactor task saving with Promise and duplicate check",
             description: "保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示"
@@ -1863,8 +1883,8 @@
         if (cardBtn) cardBtn.classList.toggle('active', mode === 'card');
         if (listBtn) listBtn.classList.toggle('active', mode === 'list');
 
-        // 用当前缓存数据按新模式重新渲染
-        renderList(gCachedTasks);
+        // 用当前缓存数据按新模式重新渲染（布局变化需全量重建）
+        renderList(gCachedTasks, true);
     }
 
    // ========== 缩略图虚拟滚动懒加载管理器 ==========
@@ -2067,7 +2087,29 @@
             showLoading(el); // 点击后立刻从“失败”切回“加载中”反馈
             enqueue(key, el);
         }
+
+        // 观察单个缩略图（增量渲染时用于新插入的卡片）
+        function observe(el) {
+            const obs = getObserver();
+            if (!obs) { enqueue(el.dataset.thumbKey, el); return; }
+            obs.observe(el);
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight + 400 && rect.bottom > -100) {
+                enqueue(el.dataset.thumbKey, el);
+            }
+        }
     
+        // 彻底清除某个 key（卡片被删除/重建时调用）：取消重试定时器、移出队列、释放并发位
+        function forget(key, el) {
+            const st = states.get(key);
+            if (st) cancelTimer(st);
+            states.delete(key);
+            elements.delete(key);
+            dequeue(key);
+            inflight.delete(key);
+            if (el && activeObserver) activeObserver.unobserve(el);
+        }
+        
         // 渲染前调用：解除旧 DOM 引用并断开观察器
         function reset() {
             states.forEach(st => cancelTimer(st));
@@ -2078,30 +2120,34 @@
             if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
         }
     
-        return { reset, manualRetry, observeAll };
+        return { reset, manualRetry, observe, forget, observeAll };
     })();
 
-    // 统一入口：根据当前视图模式渲染列表（tasks 为已完成筛选/搜索的数据）
-    function renderList(tasks) {
-        ThumbLoader.reset();
+    // 统一入口：根据当前视图模式渲染列表
+    // full=true：全量重建（仅卡片/列表切换时使用）；否则增量 diff，复用已有卡片与已加载缩略图
+    function renderList(tasks, full = false) {
         const container = document.getElementById("task-card-list");
         container.classList.toggle("list-mode", gLayoutMode === 'list');
+        if (full) {
+            ThumbLoader.reset();
+            container.innerHTML = "";
+        }
         displayTasks(tasks);
     }
 
     function displayTasks(tasks) {
         const container = document.getElementById("task-card-list");
-        container.innerHTML = "";
         const searchTerm = (document.getElementById("search")?.value || "").toLowerCase();
         const filtered = tasks.filter(task =>
             task.text.toLowerCase().includes(searchTerm) ||
             task.remark.toLowerCase().includes(searchTerm)
         );
-
+    
         // ✅ 缓存过滤后的数据，用于同步复制
         gCachedTasks = [...filtered];
-
+    
         if (filtered.length === 0) {
+            ThumbLoader.reset();
             container.innerHTML = `
                 <div class="empty-state" style="grid-column: 1/-1;">
                     <div class="empty-state-icon">📭</div>
@@ -2110,106 +2156,159 @@
             `;
             return;
         }
-
+    
+        container.querySelector('.empty-state')?.remove();
+    
+        // 现有卡片按任务 id 建索引
+        const existing = new Map();
+        container.querySelectorAll('.task-card').forEach(c => existing.set(c.dataset.taskId, c));
+    
+        const newThumbs = [];   // 本次需要新观察的缩略图
+        const seen = new Set();
+    
         filtered.forEach(task => {
-            const escapedText = escapeHtml(task.text || "");
-            const escapedRemark = escapeHtml(task.remark || "");
-            const card = document.createElement("div");
-            card.className = "task-card";
-            card.dataset.taskId = task.id;
-            
-            // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
-            const sourceType = getSourceType(task.text || "");
-            const isJM = (sourceType === 'jm');
-            const isPixiv = (sourceType === 'pixiv');
-            const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
-            
-            // 状态样式类
-            let statusClass = "status-pending";
-            if (task.status === "已完成") statusClass = "status-completed";
-            else if (task.status === "已失效") statusClass = "status-invalid";
-
-            // 收藏状态
-            const favActive = task.favorite ? "active" : "";
-            const favIcon = task.favorite ? "⭐" : "☆";
-
-            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）【已屏蔽】
-            const localPreviewBtn = '';
-            // const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
-            
-            // 生成收藏链接按钮 HTML（仅 JM 和 Pixiv 类型显示，跳转到 booksreaders1.github.io/PrictureView）
-            const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
-            
-            // 生成预览按钮 HTML（仅 JM 和 Pixiv 类型显示，预览第一张图片）
-            const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
-            
-            // 生成智能跳转按钮 HTML（仅 pixiv 或 JM 类型显示）
-            const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
-
-            // 生成来源标签 HTML
-            let sourceTagHtml = '';
-            if (sourceType === 'pixiv') {
-                sourceTagHtml = '<span class="task-card-source-tag tag-pixiv">Pixiv</span>';
-            } else if (sourceType === 'jm') {
-                sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
+            const key = String(task.id);
+            seen.add(key);
+            let card = existing.get(key);
+            if (card) {
+                // 已有卡片：编号/来源未变则复用缩略图，内容重建
+                const fresh = refreshCard(card, task, newThumbs);
+                card.remove();
+                card = fresh;
+            } else {
+                // 新增卡片
+                card = buildTaskCard(task);
+                const thumb = card.querySelector('.task-card-thumb');
+                if (thumb) newThumbs.push(thumb);
             }
-
-            // 生成缩略图 HTML（仅卡片视图 + JM/Pixiv 类型）
-            // 注意：src 不在此处设置——只有当卡片滚动进入视口时，
-            // ThumbLoader 才会把 data-thumb-src 写入 <img>.src 发起真实请求（虚拟滚动懒加载）
-            let thumbHtml = '';
-            if (gLayoutMode === 'card' && (isJM || isPixiv)) {
-                const previewUrl = generatePreviewUrl(task.text || "");
-                if (previewUrl) {
-                    const safeSrc = escapeHtml(previewUrl);
-                    const thumbKey = `${task.id}`;
-                    thumbHtml = `
-                        <div class="task-card-thumb" data-thumb-key="${thumbKey}" data-thumb-src="${safeSrc}"
-                             onclick="onThumbClick(event, '${thumbKey}')" title="点击预览">
-                            <img class="thumb-img" alt="" decoding="async" draggable="false">
-                            <div class="thumb-placeholder"><span>🖼️</span><span>等待加载</span></div>
-                        </div>`;
-                }
-            }
-
-            card.innerHTML = `
-                ${thumbHtml}
-                <div class="task-card-header">
-                    <div class="task-card-title-wrapper">
-                        <div class="task-card-title">${escapedText}</div>
-                        <button class="task-card-favorite-btn ${favActive}" onclick="toggleFavorite(${task.id})" title="收藏">${favIcon}</button>
-                    </div>
-                </div>
-                <div class="task-card-meta">
-                    <span>📝 ${escapedRemark || "无备注"}</span>
-                    ${sourceTagHtml}
-                    <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
-                </div>
-                <div class="task-card-actions">
-                    <div class="task-card-primary-actions">
-                        ${previewBtn}
-                        ${smartJumpBtn}
-                        ${localPreviewBtn}
-                        ${favoriteLinkBtn}
-                    </div>
-                    <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
-                    <div class="task-card-more-menu" id="more-menu-${task.id}">
-                        <button class="task-card-more-item" onclick="completeTask(${task.id}); hideAllMoreMenus()">✅ 标记完成</button>
-                        <button class="task-card-more-item" onclick="toggleFavorite(${task.id}); hideAllMoreMenus()">⭐ 收藏/取消</button>
-                        <button class="task-card-more-item" onclick="invalidateTask(${task.id}); hideAllMoreMenus()">❌ 标记失效</button>
-                        <button class="task-card-more-item" onclick="copyTaskText(${task.id}); hideAllMoreMenus()">📋 复制内容</button>
-                        <button class="task-card-more-item" onclick="editTaskInCard(${task.id}); hideAllMoreMenus()">✏️ 编辑任务</button>
-                        <button class="task-card-more-item danger" onclick="deleteTask(${task.id}); hideAllMoreMenus()">🗑️ 删除任务</button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
+            container.appendChild(card); // 新增=插入；已有=移动到当前顺序（节点复用，图片不重载）
         });
-
-        // ✅ 卡片视图：注册缩略图虚拟滚动观察器（仅为进入视口的卡片发起图片请求）
-        if (gLayoutMode === 'card') {
-            requestAnimationFrame(() => ThumbLoader.observeAll(container));
+    
+        // 移除本次不在列表中的卡片，并清理其缩略图状态
+        existing.forEach((card, key) => {
+            if (!seen.has(key)) {
+                const thumb = card.querySelector('.task-card-thumb');
+                if (thumb) ThumbLoader.forget(key, thumb);
+                card.remove();
+            }
+        });
+    
+        // ✅ 只观察新缩略图（旧图已在 DOM 且已加载，不再触发任何请求）
+        if (gLayoutMode === 'card' && newThumbs.length > 0) {
+            requestAnimationFrame(() => newThumbs.forEach(el => ThumbLoader.observe(el)));
         }
+    }
+
+    // 构建单张任务卡片（不入库、不观察缩略图，观察由调用方决定）
+    function buildTaskCard(task) {
+        const escapedText = escapeHtml(task.text || "");
+        const escapedRemark = escapeHtml(task.remark || "");
+        const card = document.createElement("div");
+        card.className = "task-card";
+        card.dataset.taskId = task.id;
+    
+        // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
+        const sourceType = getSourceType(task.text || "");
+        const isJM = (sourceType === 'jm');
+        const isPixiv = (sourceType === 'pixiv');
+        const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
+    
+        // ★ 增量渲染：记录本卡的编号/来源，供下次更新时比对是否可复用缩略图
+        card.dataset.num = extractNumber(task.text || "");
+        card.dataset.source = sourceType;
+    
+        // 状态样式类
+        let statusClass = "status-pending";
+        if (task.status === "已完成") statusClass = "status-completed";
+        else if (task.status === "已失效") statusClass = "status-invalid";
+    
+        // 收藏状态
+        const favActive = task.favorite ? "active" : "";
+        const favIcon = task.favorite ? "⭐" : "☆";
+    
+        // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）【已屏蔽】
+        const localPreviewBtn = '';
+        const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
+        const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
+        const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
+    
+        // 生成来源标签 HTML
+        let sourceTagHtml = '';
+        if (sourceType === 'pixiv') {
+            sourceTagHtml = '<span class="task-card-source-tag tag-pixiv">Pixiv</span>';
+        } else if (sourceType === 'jm') {
+            sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
+        }
+    
+        // 生成缩略图 HTML（仅卡片视图 + JM/Pixiv 类型；src 仍由 ThumbLoader 入视口时写入）
+        let thumbHtml = '';
+        if (gLayoutMode === 'card' && (isJM || isPixiv)) {
+            const previewUrl = generatePreviewUrl(task.text || "");
+            if (previewUrl) {
+                const safeSrc = escapeHtml(previewUrl);
+                const thumbKey = `${task.id}`;
+                thumbHtml = `
+                    <div class="task-card-thumb" data-thumb-key="${thumbKey}" data-thumb-src="${safeSrc}"
+                         onclick="onThumbClick(event, '${thumbKey}')" title="点击预览">
+                        <img class="thumb-img" alt="" decoding="async" draggable="false">
+                        <div class="thumb-placeholder"><span>🖼️</span><span>等待加载</span></div>
+                    </div>`;
+            }
+        }
+    
+        card.innerHTML = `
+            ${thumbHtml}
+            <div class="task-card-header">
+                <div class="task-card-title-wrapper">
+                    <div class="task-card-title">${escapedText}</div>
+                    <button class="task-card-favorite-btn ${favActive}" onclick="toggleFavorite(${task.id})" title="收藏">${favIcon}</button>
+                </div>
+            </div>
+            <div class="task-card-meta">
+                <span>📝 ${escapedRemark || "无备注"}</span>
+                ${sourceTagHtml}
+                <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
+            </div>
+            <div class="task-card-actions">
+                <div class="task-card-primary-actions">
+                    ${previewBtn}
+                    ${smartJumpBtn}
+                    ${localPreviewBtn}
+                    ${favoriteLinkBtn}
+                </div>
+                <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
+                <div class="task-card-more-menu" id="more-menu-${task.id}">
+                    <button class="task-card-more-item" onclick="completeTask(${task.id}); hideAllMoreMenus()">✅ 标记完成</button>
+                    <button class="task-card-more-item" onclick="toggleFavorite(${task.id}); hideAllMoreMenus()">⭐ 收藏/取消</button>
+                    <button class="task-card-more-item" onclick="invalidateTask(${task.id}); hideAllMoreMenus()">❌ 标记失效</button>
+                    <button class="task-card-more-item" onclick="copyTaskText(${task.id}); hideAllMoreMenus()">📋 复制内容</button>
+                    <button class="task-card-more-item" onclick="editTaskInCard(${task.id}); hideAllMoreMenus()">✏️ 编辑任务</button>
+                    <button class="task-card-more-item danger" onclick="deleteTask(${task.id}); hideAllMoreMenus()">🗑️ 删除任务</button>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+    
+    // 更新已有卡片：编号/来源未变 → 移植旧缩略图（已加载的图零请求）；
+    // 变了 → 弃掉旧缩略图状态，新缩略图加入待观察队列（只重载这一张）
+    function refreshCard(card, task, newThumbs) {
+        const key = String(task.id);
+        const oldThumb = card.querySelector('.task-card-thumb');
+        const num = extractNumber(task.text || "");
+        const source = getSourceType(task.text || "");
+        const thumbUnchanged = (num === (card.dataset.num || '')) && (source === (card.dataset.source || ''));
+    
+        const fresh = buildTaskCard(task);
+        const freshThumb = fresh.querySelector('.task-card-thumb');
+    
+        if (oldThumb && thumbUnchanged && freshThumb) {
+            freshThumb.replaceWith(oldThumb);   // 旧节点（含已加载图片）原样搬进新卡片
+        } else {
+            if (oldThumb) ThumbLoader.forget(key, oldThumb);
+            if (freshThumb) newThumbs.push(freshThumb);
+        }
+        return fresh;
     }
 
     // 点击缩略图：加载失败时手动重试，否则打开大图预览
