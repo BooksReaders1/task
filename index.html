@@ -3254,6 +3254,13 @@
     async function loadBackupList() {
         if (!getGithubToken()) { showToast("请先配置 Token", "warning"); return; }
         const listDiv = document.getElementById('gh-backup-list');
+        const logDiv = document.getElementById('gh-log-list');
+        const restoreArea = document.getElementById('gh-restore-area'); // 👈 新增获取还原区引用
+
+        // ✅ 切换时统一重置所有子面板状态
+        if (logDiv) logDiv.style.display = 'none';
+        if (restoreArea) restoreArea.style.display = 'none'; // 👈 关键修复：隐藏还原确认区
+    
         listDiv.style.display = 'block';
         listDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">加载中...</div>';
     
