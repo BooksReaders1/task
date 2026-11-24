@@ -3147,31 +3147,39 @@
     // ✅ 修正1: 优化自动备份逻辑，增加详细日志
     async function autoBackup() {
         console.log("[AutoBackup] 开始检查...");
-        if (!getGithubToken()) {
-            console.log("[AutoBackup] 跳过: 未配置 Token");
-            return;
-        }
+        if (!getGithubToken()) return;
+        
         try {
             const fileName = getTodayFileName();
-            // 检查今日是否已存在备份
+            
+            // ✅ 1. 单独处理“检查文件”的 404，这属于正常流程，不记入失败日志
+            let fileExists = false;
             try {
                 await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
-                console.log("[AutoBackup] 今日已存在备份，跳过");
-                return; 
-            } catch (e) {
-                if (e.message.includes('404')) {
-                    console.log("[AutoBackup] 今日暂无备份，准备执行...");
+                fileExists = true;
+            } catch (checkErr) {
+                if (checkErr.message.includes('404') || checkErr.message.includes('Not Found')) {
+                    fileExists = false; // 确认是文件不存在，继续执行备份
                 } else {
-                    throw e; // 其他错误继续抛出
+                    // 如果是网络断了或 Token 错了导致的非 404 错误，才记录为失败
+                    addBackupLog('auto', 'fail', `预检失败: ${checkErr.message}`);
+                    return;
                 }
             }
     
+            if (fileExists) {
+                addBackupLog('auto', 'skip', '今日已备份');
+                console.log("[AutoBackup] 今日已存在备份，跳过");
+                return; 
+            }
+    
+            // ✅ 2. 真正的备份上传逻辑
             const tasks = await new Promise(r => {
                 db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
             });
             
-            if (tasks.length === 0) {
-                console.log("[AutoBackup] 跳过: 数据库为空");
+            if (!tasks || tasks.length === 0) {
+                addBackupLog('auto', 'skip', '本地无数据');
                 return;
             }
     
@@ -3183,15 +3191,15 @@
                 content: content,
                 branch: GH_BRANCH
             });
-             // ✅ 新增：自动备份成功后弹出短暂提示
-            showToast("☁️ 今日数据已自动同步至 GitHub", "info", 3000); 
-            // ✅ 记录成功日志
+            
             addBackupLog('auto', 'success', `${tasks.length}条任务已同步`);
+            showToast("☁️ 今日数据已自动同步至 GitHub", "info", 3000);
             console.log("[AutoBackup] ✅ 成功");
-        } catch (err) { 
-            // ✅ 记录失败日志及原因
+    
+        } catch (err) {
+            // ✅ 3. 只有走到这里，才是真正的备份上传失败（如网络中断、权限不足等）
             addBackupLog('auto', 'fail', err.message);
-            console.error("[AutoBackup] ❌ 失败:", err); 
+            console.error("[AutoBackup] ❌ 上传失败:", err);
         }
     }
     
