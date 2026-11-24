@@ -3057,6 +3057,29 @@
     
     let gSelectedBackupName = null;
     let gSelectedBackupContent = null;
+
+    const GH_LOG_KEY = 'gh_backup_logs'; // 日志存储键名
+    const MAX_LOG_ENTRIES = 50;          // 最多保留50条，防止 localStorage 爆满
+    
+    function addBackupLog(type, status, detail) {
+        const logs = JSON.parse(localStorage.getItem(GH_LOG_KEY) || '[]');
+        const newLog = {
+            time: new Date().toLocaleString(),
+            type: type,       // 'auto' | 'manual' | 'restore'
+            status: status,   // 'success' | 'fail'
+            detail: detail    // 数据量或失败原因
+        };
+        
+        // 新日志插到最前面，并限制总数
+        logs.unshift(newLog);
+        if (logs.length > MAX_LOG_ENTRIES) logs.length = MAX_LOG_ENTRIES;
+        
+        localStorage.setItem(GH_LOG_KEY, JSON.stringify(logs));
+    }
+    
+    function getBackupLogs() {
+        return JSON.parse(localStorage.getItem(GH_LOG_KEY) || '[]');
+    }
     
     // --- 工具函数 ---
     function getGithubToken() { return localStorage.getItem(GH_STORAGE_KEY); }
@@ -3160,8 +3183,12 @@
             });
              // ✅ 新增：自动备份成功后弹出短暂提示
             showToast("☁️ 今日数据已自动同步至 GitHub", "info", 3000); 
+            // ✅ 记录成功日志
+            addBackupLog('auto', 'success', `${tasks.length}条任务已同步`);
             console.log("[AutoBackup] ✅ 成功");
         } catch (err) { 
+            // ✅ 记录失败日志及原因
+            addBackupLog('auto', 'fail', err.message);
             console.error("[AutoBackup] ❌ 失败:", err); 
         }
     }
@@ -3197,9 +3224,13 @@
             if (sha) body.sha = sha;
     
             await ghApi('PUT', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}`, body);
+            // ✅ 记录成功日志
+            addBackupLog('manual', 'success', `${tasks.length}条任务已备份`);
             showToast("✅ 备份成功", "success");
             loadBackupList();
         } catch (err) {
+            // ✅ 记录失败日志
+            addBackupLog('manual', 'fail', err.message);
             showToast("❌ 备份失败: " + err.message, "error");
         }
     }
@@ -3275,6 +3306,7 @@
                 tx.oncomplete = resolve;
                 tx.onerror = reject;
             });
+            addBackupLog('restore', 'success', `从 ${gSelectedBackupName} 还原了 ${gSelectedBackupContent.tasks.length}条`);
             showToast("✅ 还原成功", "success");
             closeGithubBackupModalBtn();
             loadTasksFromIndexedDB();
@@ -3300,6 +3332,43 @@
     }
     function closeGithubBackupModalBtn() {
         document.getElementById('github-backup-overlay').classList.remove('show');
+    }
+    function loadBackupLogs() {
+        // 隐藏备份列表，显示日志列表
+        document.getElementById('gh-backup-list').style.display = 'none';
+        document.getElementById('gh-restore-area').style.display = 'none';
+        
+        const logDiv = document.getElementById('gh-log-list');
+        logDiv.style.display = 'block';
+        
+        const logs = getBackupLogs();
+        if (logs.length === 0) {
+            logDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">暂无备份日志</div>';
+            return;
+        }
+    
+        // 根据状态设置颜色标签
+        logDiv.innerHTML = logs.map(log => {
+            let statusBadge = '';
+            if (log.status === 'success') statusBadge = '<span style="color:#28a745;font-weight:bold;">✅ 成功</span>';
+            else if (log.status === 'fail') statusBadge = '<span style="color:#dc3545;font-weight:bold;">❌ 失败</span>';
+            else statusBadge = '<span style="color:#ffc107;font-weight:bold;">⏭️ 跳过</span>';
+            
+            const typeLabel = log.type === 'auto' ? '🤖 自动' : (log.type === 'restore' ? '↩️ 还原' : '✋ 手动');
+    
+            return `
+                <div style="padding: 8px 12px; border-bottom: 1px solid #f0f0f0; line-height: 1.5;">
+                    <div style="display:flex; justify-content:space-between; color:#6c757d;">
+                        <span>${typeLabel}</span>
+                        <span>${log.time}</span>
+                    </div>
+                    <div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center;">
+                        ${statusBadge}
+                        <span style="color:#495057;">${escapeHtml(log.detail)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 </script>
 <!-- GitHub 备份管理悬浮窗 -->
@@ -3328,8 +3397,12 @@
             <div style="display: flex; gap: 10px; margin-bottom: 16px;">
                 <button class="unified-button btn-preview" onclick="manualBackup()" style="flex: 1;">🚀 立即备份</button>
                 <button class="unified-button btn-edit" onclick="loadBackupList()" style="flex: 1;">📜 查看记录</button>
+                <button class="unified-button btn-clear" onclick="loadBackupLogs()" style="flex: 1;">📋 日志</button>
             </div>
 
+            <!-- 新增日志列表容器（默认隐藏） -->
+            <div id="gh-log-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 6px; display: none; font-size: 12px;">
+            </div>
             <!-- 备份列表 -->
             <div id="gh-backup-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 6px; display: none;">
                 <!-- 动态生成 -->
