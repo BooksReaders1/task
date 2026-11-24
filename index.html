@@ -3249,56 +3249,88 @@
             showToast("❌ 备份失败: " + err.message, "error");
         }
     }
+
+    // 全局变量：缓存完整的文件列表，避免重复请求 API
+    let gAllBackupFiles = []; 
+    const DEFAULT_PAGE_SIZE = 10; // 默认显示条数
     
-    // ✅ 修正2: 修复列表渲染时的 undefined 错误
-    async function loadBackupList() {
+    async function loadBackupList(forceLoadAll = false) {
         if (!getGithubToken()) { showToast("请先配置 Token", "warning"); return; }
+        
         const listDiv = document.getElementById('gh-backup-list');
         const logDiv = document.getElementById('gh-log-list');
-        const restoreArea = document.getElementById('gh-restore-area'); // 👈 新增获取还原区引用
-
-        // ✅ 切换时统一重置所有子面板状态
+        const restoreArea = document.getElementById('gh-restore-area');
+        
+        // 切换面板时重置状态
         if (logDiv) logDiv.style.display = 'none';
-        if (restoreArea) restoreArea.style.display = 'none'; // 👈 关键修复：隐藏还原确认区
-    
+        if (restoreArea) restoreArea.style.display = 'none';
         listDiv.style.display = 'block';
-        listDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">加载中...</div>';
     
-        try {
-            const files = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}?ref=${GH_BRANCH}`);
-            if (!Array.isArray(files) || files.length === 0) {
-                listDiv.innerHTML = '<div style="padding:10px;text-align:center;">暂无备份记录</div>';
+        // 如果是首次加载或强制刷新，才去拉取 API
+        if (gAllBackupFiles.length === 0 || forceLoadAll) {
+            listDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">加载中...</div>';
+            try {
+                const files = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}?ref=${GH_BRANCH}`);
+                
+                if (!Array.isArray(files) || files.length === 0) {
+                    listDiv.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#6c757d;">
+                            <div style="font-size:24px;margin-bottom:8px;">☁️</div>
+                            <div>当前设备暂无备份记录</div>
+                            <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
+                        </div>`;
+                    gAllBackupFiles = [];
+                    return;
+                }
+                
+                // 按文件名倒序（最新的在前）并缓存
+                gAllBackupFiles = files.sort((a, b) => b.name.localeCompare(a.name));
+            } catch (err) {
+                if (err.message.includes('404') || err.message.includes('Not Found')) {
+                    listDiv.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#6c757d;">
+                            <div style="font-size:24px;margin-bottom:8px;">☁️</div>
+                            <div>当前设备暂无备份记录</div>
+                            <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
+                        </div>`;
+                    gAllBackupFiles = [];
+                } else {
+                    listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
+                }
                 return;
             }
-            files.sort((a, b) => b.name.localeCompare(a.name));
-            
-            // 从文件名提取日期，不再使用 f.committer.date
-            listDiv.innerHTML = files.map(f => {
-                // 文件名格式: 2026-11-23.json.enc -> 提取 2026-11-23
-                const dateStr = f.name.replace('.json.enc', ''); 
-                return `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
-                         onclick="selectBackup('${f.sha}', '${f.name}')">
-                        <span style="font-size: 13px; font-weight: 500;">📅 ${dateStr}</span>
-                        <span style="font-size: 11px; color: #6c757d;">${f.size ? (f.size/1024).toFixed(1)+'KB' : ''}</span>
-                    </div>
-                `;
-            }).join('');
-        } catch (err) {
-            // ✅ 核心修复：区分 404（正常）和其他错误（异常）
-            if (err.message.includes('404') || err.message.includes('Not Found')) {
-                listDiv.innerHTML = `
-                    <div style="padding:20px;text-align:center;color:#6c757d;">
-                        <div style="font-size:24px;margin-bottom:8px;">☁️</div>
-                        <div>当前设备暂无备份记录</div>
-                        <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
-                    </div>
-                `;
-            } else {
-                // 真正的网络或权限错误才标红
-                listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
-            }
         }
+    
+        // 根据是否展开，决定渲染多少条
+        const displayCount = forceLoadAll ? gAllBackupFiles.length : Math.min(DEFAULT_PAGE_SIZE, gAllBackupFiles.length);
+        const visibleFiles = gAllBackupFiles.slice(0, displayCount);
+        
+        // 生成列表 HTML
+        let html = visibleFiles.map(f => {
+            const dateStr = f.name.replace('.json.enc', ''); 
+            return `
+                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
+                     onclick="selectBackup('${f.sha}', '${f.name}')">
+                    <span style="font-size: 13px; font-weight: 500;">📅 ${dateStr}</span>
+                    <span style="font-size: 11px; color: #6c757d;">${f.size ? (f.size/1024).toFixed(1)+'KB' : ''}</span>
+                </div>
+            `;
+        }).join('');
+    
+        // 如果还有更多记录，追加“加载更多”按钮
+        if (gAllBackupFiles.length > DEFAULT_PAGE_SIZE && !forceLoadAll) {
+            const remaining = gAllBackupFiles.length - DEFAULT_PAGE_SIZE;
+            html += `
+                <div style="padding: 12px; text-align: center; background: #f8f9fa; border-top: 1px solid #eee; cursor: pointer; color: #007bff; font-size: 13px;"
+                     onclick="loadBackupList(true)">
+                    📂 还有 ${remaining} 条历史记录，点击加载更多
+                </div>
+            `;
+        } else if (gAllBackupFiles.length <= DEFAULT_PAGE_SIZE) {
+             html += `<div style="padding:8px;text-align:center;font-size:11px;color:#adb5bd;">已显示全部 ${gAllBackupFiles.length} 条记录</div>`;
+        }
+    
+        listDiv.innerHTML = html;
     }
     
     async function selectBackup(sha, name) {
@@ -3367,22 +3399,35 @@
     function closeGithubBackupModalBtn() {
         document.getElementById('github-backup-overlay').classList.remove('show');
     }
-    function loadBackupLogs() {
-        // 隐藏备份列表，显示日志列表
+    
+    // 全局变量：缓存完整的日志列表
+    let gAllBackupLogs = []; 
+    const LOG_PAGE_SIZE = 10; // 日志默认显示条数
+    
+    function loadBackupLogs(forceLoadAll = false) {
+        // 切换面板时重置状态
         document.getElementById('gh-backup-list').style.display = 'none';
         document.getElementById('gh-restore-area').style.display = 'none';
         
         const logDiv = document.getElementById('gh-log-list');
         logDiv.style.display = 'block';
         
-        const logs = getBackupLogs();
-        if (logs.length === 0) {
+        // 首次加载或强制刷新时，从 localStorage 读取全量数据并缓存
+        if (gAllBackupLogs.length === 0 || forceLoadAll) {
+            gAllBackupLogs = getBackupLogs(); // 复用之前的读取函数
+        }
+    
+        // 根据是否展开，决定渲染多少条
+        const displayCount = forceLoadAll ? gAllBackupLogs.length : Math.min(LOG_PAGE_SIZE, gAllBackupLogs.length);
+        const visibleLogs = gAllBackupLogs.slice(0, displayCount);
+        
+        if (visibleLogs.length === 0) {
             logDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">暂无备份日志</div>';
             return;
         }
     
-        // 根据状态设置颜色标签
-        logDiv.innerHTML = logs.map(log => {
+        // 生成日志列表 HTML
+        let html = visibleLogs.map(log => {
             let statusBadge = '';
             if (log.status === 'success') statusBadge = '<span style="color:#28a745;font-weight:bold;">✅ 成功</span>';
             else if (log.status === 'fail') statusBadge = '<span style="color:#dc3545;font-weight:bold;">❌ 失败</span>';
@@ -3398,11 +3443,26 @@
                     </div>
                     <div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center;">
                         ${statusBadge}
-                        <span style="color:#495057;">${escapeHtml(log.detail)}</span>
+                        <span style="color:#495057; word-break: break-all;">${escapeHtml(log.detail)}</span>
                     </div>
                 </div>
             `;
         }).join('');
+    
+        // 如果还有更多日志，追加“加载更多”按钮
+        if (gAllBackupLogs.length > LOG_PAGE_SIZE && !forceLoadAll) {
+            const remaining = gAllBackupLogs.length - LOG_PAGE_SIZE;
+            html += `
+                <div style="padding: 12px; text-align: center; background: #f8f9fa; border-top: 1px solid #eee; cursor: pointer; color: #007bff; font-size: 13px;"
+                     onclick="loadBackupLogs(true)">
+                    📂 还有 ${remaining} 条历史日志，点击加载更多
+                </div>
+            `;
+        } else if (gAllBackupLogs.length <= LOG_PAGE_SIZE) {
+             html += `<div style="padding:8px;text-align:center;font-size:11px;color:#adb5bd;">已显示全部 ${gAllBackupLogs.length} 条日志</div>`;
+        }
+    
+        logDiv.innerHTML = html;
     }
 </script>
 <!-- GitHub 备份管理悬浮窗 -->
