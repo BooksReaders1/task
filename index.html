@@ -3101,21 +3101,36 @@
         return `backups/${GH_DEVICE_ID}/${date}.json.enc`;
     }
     
+    // ✅ 修正1: 优化自动备份逻辑，增加详细日志
     async function autoBackup() {
-        if (!getGithubToken()) return;
+        console.log("[AutoBackup] 开始检查...");
+        if (!getGithubToken()) {
+            console.log("[AutoBackup] 跳过: 未配置 Token");
+            return;
+        }
         try {
             const fileName = getTodayFileName();
-            // 检查今日是否已存在备份，存在则跳过
+            // 检查今日是否已存在备份
             try {
                 await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
-                console.log("今日已存在备份，跳过自动备份");
+                console.log("[AutoBackup] 今日已存在备份，跳过");
                 return; 
-            } catch (e) {} // 404 表示不存在，继续执行
+            } catch (e) {
+                if (e.message.includes('404')) {
+                    console.log("[AutoBackup] 今日暂无备份，准备执行...");
+                } else {
+                    throw e; // 其他错误继续抛出
+                }
+            }
     
             const tasks = await new Promise(r => {
                 db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
             });
-            if (tasks.length === 0) return;
+            
+            if (tasks.length === 0) {
+                console.log("[AutoBackup] 跳过: 数据库为空");
+                return;
+            }
     
             const payload = { version: 1, date: new Date().toISOString(), tasks };
             const content = utf8ToBase64(encryptData(payload));
@@ -3125,7 +3140,10 @@
                 content: content,
                 branch: GH_BRANCH
             });
-        } catch (err) { console.warn("自动备份失败:", err); }
+            console.log("[AutoBackup] ✅ 成功");
+        } catch (err) { 
+            console.error("[AutoBackup] ❌ 失败:", err); 
+        }
     }
     
     async function manualBackup() {
@@ -3161,6 +3179,7 @@
         }
     }
     
+    // ✅ 修正2: 修复列表渲染时的 undefined 错误
     async function loadBackupList() {
         if (!getGithubToken()) { showToast("请先配置 Token", "warning"); return; }
         const listDiv = document.getElementById('gh-backup-list');
@@ -3174,19 +3193,24 @@
                 return;
             }
             files.sort((a, b) => b.name.localeCompare(a.name));
-            listDiv.innerHTML = files.map(f => `
-                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
-                     onclick="selectBackup('${f.sha}', '${f.name}')">
-                    <span style="font-size: 13px; font-weight: 500;">📅 ${f.name}</span>
-                    <span style="font-size: 11px; color: #6c757d;">${new Date(f.committer.date).toLocaleDateString()}</span>
-                </div>
-            `).join('');
+            
+            // 从文件名提取日期，不再使用 f.committer.date
+            listDiv.innerHTML = files.map(f => {
+                // 文件名格式: 2026-11-23.json.enc -> 提取 2026-11-23
+                const dateStr = f.name.replace('.json.enc', ''); 
+                return `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
+                         onclick="selectBackup('${f.sha}', '${f.name}')">
+                        <span style="font-size: 13px; font-weight: 500;">📅 ${dateStr}</span>
+                        <span style="font-size: 11px; color: #6c757d;">${f.size ? (f.size/1024).toFixed(1)+'KB' : ''}</span>
+                    </div>
+                `;
+            }).join('');
         } catch (err) {
             listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
         }
     }
     
-    // 选择备份并预加载内容
     async function selectBackup(sha, name) {
         gSelectedBackupName = name;
         gSelectedBackupContent = null;
