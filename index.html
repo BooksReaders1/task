@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>任务管理</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -987,6 +988,8 @@
     <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" onclick="showChangelogModal()">📝 更新日志</button>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" onclick="openGithubBackupModal()">☁️ GitHub 备份</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
 </div>
 
@@ -3025,7 +3028,276 @@
     }
 
     // window.onload 不再处理 URL 参数
-</script>
 
+    // ========== GitHub 备份模块 (修正版) ==========
+    const GH_REPO_OWNER = 'BooksReaders1'; // 👈 改为你的 GitHub 用户名
+    const GH_REPO_NAME = 'task-backups';           // 👈 改为你的仓库名
+    const GH_BRANCH = 'main';              // 👈 改为分支名 (main 或 master)
+    const GH_ENCRYPT_KEY = 'task_backup_2026_string_000123'; // 👈 建议修改为复杂字符串
+    const GH_STORAGE_KEY = 'gh_backup_token';
+    const GH_DEVICE_ID = 'device_' + btoa(navigator.userAgent).slice(0, 8);
+    
+    let gSelectedBackupName = null;
+    let gSelectedBackupContent = null;
+    
+    // --- 工具函数 ---
+    function getGithubToken() { return localStorage.getItem(GH_STORAGE_KEY); }
+    
+    function saveGithubConfig() {
+        const token = document.getElementById('gh-token-input').value.trim();
+        if (!token) { showToast("Token 不能为空", "error"); return; }
+        localStorage.setItem(GH_STORAGE_KEY, token);
+        document.getElementById('gh-status-msg').textContent = "✅ 配置已保存";
+        document.getElementById('gh-status-msg').style.color = "#28a745";
+    }
+    
+    function clearGithubConfig() {
+        localStorage.removeItem(GH_STORAGE_KEY);
+        document.getElementById('gh-token-input').value = "";
+        document.getElementById('gh-status-msg').textContent = "❌ 配置已清除";
+    }
+    
+    function utf8ToBase64(str) {
+        return btoa(new TextEncoder().encode(str).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    }
+    function base64ToUtf8(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+    
+    function encryptData(dataObj) {
+        const jsonStr = JSON.stringify(dataObj);
+        return CryptoJS.AES.encrypt(jsonStr, GH_ENCRYPT_KEY).toString();
+    }
+    function decryptData(cipherText) {
+        const bytes = CryptoJS.AES.decrypt(cipherText, GH_ENCRYPT_KEY);
+        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    }
+    
+    async function ghApi(method, url, body = null) {
+        const token = getGithubToken();
+        if (!token) throw new Error("未配置 GitHub Token");
+        const headers = {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        };
+        const opts = { method, headers };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`https://api.github.com${url}`, opts);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || `HTTP ${res.status}`);
+        }
+        return res.json();
+    }
+    
+    // --- 核心业务逻辑 ---
+    
+    function getTodayFileName() {
+        const date = new Date().toISOString().slice(0, 10);
+        return `backups/${GH_DEVICE_ID}/${date}.json.enc`;
+    }
+    
+    async function autoBackup() {
+        if (!getGithubToken()) return;
+        try {
+            const fileName = getTodayFileName();
+            // 检查今日是否已存在备份，存在则跳过
+            try {
+                await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
+                console.log("今日已存在备份，跳过自动备份");
+                return; 
+            } catch (e) {} // 404 表示不存在，继续执行
+    
+            const tasks = await new Promise(r => {
+                db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
+            });
+            if (tasks.length === 0) return;
+    
+            const payload = { version: 1, date: new Date().toISOString(), tasks };
+            const content = utf8ToBase64(encryptData(payload));
+    
+            await ghApi('PUT', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}`, {
+                message: `chore: auto backup ${new Date().toLocaleDateString()}`,
+                content: content,
+                branch: GH_BRANCH
+            });
+        } catch (err) { console.warn("自动备份失败:", err); }
+    }
+    
+    async function manualBackup() {
+        if (!getGithubToken()) { showToast("请先配置 GitHub Token", "warning"); return; }
+        showToast("正在备份...", "info");
+        try {
+            const fileName = getTodayFileName();
+            const tasks = await new Promise(r => {
+                db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
+            });
+            
+            const payload = { version: 1, date: new Date().toISOString(), tasks };
+            const content = utf8ToBase64(encryptData(payload));
+    
+            let sha = null;
+            try {
+                const file = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
+                sha = file.sha;
+            } catch (e) {}
+    
+            const body = {
+                message: `chore: manual backup ${new Date().toLocaleString()}`,
+                content: content,
+                branch: GH_BRANCH
+            };
+            if (sha) body.sha = sha;
+    
+            await ghApi('PUT', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}`, body);
+            showToast("✅ 备份成功", "success");
+            loadBackupList();
+        } catch (err) {
+            showToast("❌ 备份失败: " + err.message, "error");
+        }
+    }
+    
+    async function loadBackupList() {
+        if (!getGithubToken()) { showToast("请先配置 Token", "warning"); return; }
+        const listDiv = document.getElementById('gh-backup-list');
+        listDiv.style.display = 'block';
+        listDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">加载中...</div>';
+    
+        try {
+            const files = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}?ref=${GH_BRANCH}`);
+            if (!Array.isArray(files) || files.length === 0) {
+                listDiv.innerHTML = '<div style="padding:10px;text-align:center;">暂无备份记录</div>';
+                return;
+            }
+            files.sort((a, b) => b.name.localeCompare(a.name));
+            listDiv.innerHTML = files.map(f => `
+                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
+                     onclick="selectBackup('${f.sha}', '${f.name}')">
+                    <span style="font-size: 13px; font-weight: 500;">📅 ${f.name}</span>
+                    <span style="font-size: 11px; color: #6c757d;">${new Date(f.committer.date).toLocaleDateString()}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
+        }
+    }
+    
+    // 选择备份并预加载内容
+    async function selectBackup(sha, name) {
+        gSelectedBackupName = name;
+        gSelectedBackupContent = null;
+        document.getElementById('gh-restore-area').style.display = 'block';
+        document.getElementById('gh-restore-area').querySelector('div').innerHTML = `⏳ 正在读取备份...`;
+        
+        try {
+            const file = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}/${name}?ref=${GH_BRANCH}`);
+            const encryptedBase64 = file.content.replace(/\n/g, '');
+            const decryptedJson = decryptData(base64ToUtf8(encryptedBase64));
+            gSelectedBackupContent = decryptedJson;
+            
+            document.getElementById('gh-restore-area').querySelector('div').innerHTML = 
+                `⚠️ 准备还原: <b>${name}</b><br>包含 ${decryptedJson.tasks.length} 条任务。<br>当前数据将被覆盖。`;
+        } catch (err) {
+            document.getElementById('gh-restore-area').querySelector('div').innerHTML = `❌ 读取失败: ${err.message}`;
+            gSelectedBackupContent = null;
+        }
+    }
+    
+    function cancelRestore() {
+        document.getElementById('gh-restore-area').style.display = 'none';
+        gSelectedBackupName = null;
+        gSelectedBackupContent = null;
+    }
+    
+    async function confirmRestore() {
+        if (!gSelectedBackupContent) { showToast("备份内容无效", "error"); return; }
+        try {
+            const tx = db.transaction([storeName], "readwrite");
+            await tx.objectStore(storeName).clear();
+            const store = tx.objectStore(storeName);
+            for (const task of gSelectedBackupContent.tasks) {
+                if (task.text) store.add(task);
+            }
+            await new Promise((resolve, reject) => {
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+            showToast("✅ 还原成功", "success");
+            closeGithubBackupModalBtn();
+            loadTasksFromIndexedDB();
+        } catch (err) {
+            showToast("❌ 还原失败: " + err.message, "error");
+        }
+    }
+    
+    // --- UI 控制 ---
+    function openGithubBackupModal() {
+        const overlay = document.getElementById('github-backup-overlay');
+        const input = document.getElementById('gh-token-input');
+        input.value = getGithubToken() || '';
+        overlay.classList.add('show');
+        document.getElementById('gh-backup-list').style.display = 'none';
+        document.getElementById('gh-restore-area').style.display = 'none';
+    }
+    
+    function closeGithubBackupModal(e) {
+        if (e && e.target.id === 'github-backup-overlay') {
+            document.getElementById('github-backup-overlay').classList.remove('show');
+        }
+    }
+    function closeGithubBackupModalBtn() {
+        document.getElementById('github-backup-overlay').classList.remove('show');
+    }
+</script>
+<!-- GitHub 备份管理悬浮窗 -->
+<div id="github-backup-overlay" class="changelog-modal-overlay" onclick="closeGithubBackupModal(event)">
+    <div class="changelog-modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+        <div class="changelog-modal-header">
+            <h3 class="changelog-modal-title">☁️ GitHub 备份管理</h3>
+            <button class="changelog-modal-close" onclick="closeGithubBackupModalBtn()">&times;</button>
+        </div>
+        <div class="changelog-modal-body">
+            <!-- 配置区域 -->
+            <div id="gh-config-section" style="margin-bottom: 20px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: #495057; display: block; margin-bottom: 6px;">
+                    GitHub Token (需 repo/public_repo 权限)
+                </label>
+                <input type="password" id="gh-token-input" placeholder="ghp_..." 
+                       style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-family: monospace;">
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="unified-button btn-save-new" onclick="saveGithubConfig()" style="flex:1; font-size: 12px; padding: 6px;">💾 保存配置</button>
+                    <button class="unified-button btn-clear" onclick="clearGithubConfig()" style="flex:1; font-size: 12px; padding: 6px;">🗑️ 清除配置</button>
+                </div>
+                <div id="gh-status-msg" style="font-size: 12px; color: #6c757d; margin-top: 6px;"></div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <button class="unified-button btn-preview" onclick="manualBackup()" style="flex: 1;">🚀 立即备份</button>
+                <button class="unified-button btn-edit" onclick="loadBackupList()" style="flex: 1;">📜 查看记录</button>
+            </div>
+
+            <!-- 备份列表 -->
+            <div id="gh-backup-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 6px; display: none;">
+                <!-- 动态生成 -->
+            </div>
+            
+            <!-- 还原确认区 -->
+            <div id="gh-restore-area" style="display: none; margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba;">
+                <div style="font-size: 13px; color: #856404; margin-bottom: 8px;">
+                    ⚠️ 确定要还原到该备份吗？当前数据将被覆盖。
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="unified-button btn-save-new" onclick="confirmRestore()" style="flex: 1; font-size: 12px;">✅ 确认还原</button>
+                    <button class="unified-button btn-cancel" onclick="cancelRestore()" style="flex: 1; font-size: 12px;">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
