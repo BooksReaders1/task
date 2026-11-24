@@ -3030,12 +3030,30 @@
     // window.onload 不再处理 URL 参数
 
     // ========== GitHub 备份模块 (修正版) ==========
+    function getDeviceId() {
+        const ua = navigator.userAgent;
+        // 提取浏览器核心名称，避免 UA 版本号变动导致 ID 频繁变化
+        let browser = 'unknown';
+        if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'chrome';
+        else if (ua.includes('Firefox')) browser = 'firefox';
+        else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'safari';
+        else if (ua.includes('Edg')) browser = 'edge';
+        
+        // 拼接操作系统前缀，进一步区分 Mac/Win/Linux 下的同名浏览器
+        let os = 'pc';
+        if (/Mobi|Android/i.test(ua)) os = 'mobile';
+        else if (ua.includes('Mac')) os = 'mac';
+        else if (ua.includes('Win')) os = 'win';
+        
+        // 最终格式示例: chrome_win, firefox_mac, safari_mobile
+        return `${browser}_${os}`;
+    }
     const GH_REPO_OWNER = 'BooksReaders1'; // 👈 改为你的 GitHub 用户名
     const GH_REPO_NAME = 'task-backups';           // 👈 改为你的仓库名
     const GH_BRANCH = 'main';              // 👈 改为分支名 (main 或 master)
     const GH_ENCRYPT_KEY = 'task_backup_2026_string_000123'; // 👈 建议修改为复杂字符串
     const GH_STORAGE_KEY = 'gh_backup_token';
-    const GH_DEVICE_ID = 'device_' + btoa(navigator.userAgent).slice(0, 8);
+    const GH_DEVICE_ID = getDeviceId();
     
     let gSelectedBackupName = null;
     let gSelectedBackupContent = null;
@@ -3140,6 +3158,8 @@
                 content: content,
                 branch: GH_BRANCH
             });
+             // ✅ 新增：自动备份成功后弹出短暂提示
+            showToast("☁️ 今日数据已自动同步至 GitHub", "info", 3000); 
             console.log("[AutoBackup] ✅ 成功");
         } catch (err) { 
             console.error("[AutoBackup] ❌ 失败:", err); 
@@ -3154,6 +3174,11 @@
             const tasks = await new Promise(r => {
                 db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
             });
+            // ✅ 新增：空数据不备份，并给用户明确反馈
+            if (!tasks || tasks.length === 0) {
+                showToast("⚠️ 当前没有任务数据，无法备份", "warning");
+                return;
+            }
             
             const payload = { version: 1, date: new Date().toISOString(), tasks };
             const content = utf8ToBase64(encryptData(payload));
