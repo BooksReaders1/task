@@ -3173,7 +3173,6 @@
             }
     
             if (fileExists) {
-                addBackupLog('auto', 'skip', '今日已备份');
                 console.log("[AutoBackup] 今日已存在备份，跳过");
                 return; 
             }
@@ -3184,7 +3183,6 @@
             });
             
             if (!tasks || tasks.length === 0) {
-                addBackupLog('auto', 'skip', '本地无数据');
                 return;
             }
     
