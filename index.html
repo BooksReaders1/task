@@ -3265,7 +3265,19 @@
                 `;
             }).join('');
         } catch (err) {
-            listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
+            // ✅ 核心修复：区分 404（正常）和其他错误（异常）
+            if (err.message.includes('404') || err.message.includes('Not Found')) {
+                listDiv.innerHTML = `
+                    <div style="padding:20px;text-align:center;color:#6c757d;">
+                        <div style="font-size:24px;margin-bottom:8px;">☁️</div>
+                        <div>当前设备暂无备份记录</div>
+                        <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
+                    </div>
+                `;
+            } else {
+                // 真正的网络或权限错误才标红
+                listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
+            }
         }
     }
     
