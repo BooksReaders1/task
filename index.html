@@ -1154,6 +1154,8 @@
         // ✅ 启动时加载配置
         loadGlobalConfigs();
         loadTasksFromIndexedDB();
+        // ✅ 必须在这里调用，确保 db 对象和 gCachedTasks 已就绪
+        autoBackup(); 
         // ⚠️ 不再处理 URL 参数
     };
 
