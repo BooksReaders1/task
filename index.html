@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>任务管理</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -183,6 +184,159 @@
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 16px;
             margin-top: 20px;
+        }
+
+        /* ========== 列表页视图切换（卡片 / 列表） ========== */
+        .list-layout-toggle {
+            display: inline-flex;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f8f9fa;
+            vertical-align: middle;
+        }
+
+        .layout-toggle-btn {
+            border: none;
+            background: transparent;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .layout-toggle-btn:hover {
+            color: #212529;
+        }
+
+        .layout-toggle-btn.active {
+            background: #007bff;
+            color: white;
+        }
+
+        /* ========== 列表视图（单列行式布局，无缩略图，不加载图片） ========== */
+        .task-list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .task-card-container.list-mode {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .task-card-container.list-mode .task-card {
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .task-card-container.list-mode .task-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .task-card-container.list-mode .task-card-header {
+            flex: 1 1 220px;
+            min-width: 0;
+        }
+
+        .task-card-container.list-mode .task-card-meta {
+            flex: 0 1 auto;
+            gap: 8px;
+        }
+
+        .task-card-container.list-mode .task-card-actions {
+            margin-top: 0;
+            margin-left: auto;
+        }
+
+        @media (max-width: 600px) {
+            .task-card-container.list-mode .task-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .task-card-container.list-mode .task-card-actions {
+                margin-left: 0;
+            }
+            .task-card-container.list-mode .task-card-header {
+                flex: 0 0 auto;   /* 列方向下高度随内容，不再固定 220px */
+            }
+            .list-title-row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .list-title-row h2 {
+                width: 100%;
+                margin-bottom: 0;
+            }
+        }
+
+        /* ========== 卡片视图缩略图（虚拟滚动懒加载 + 失败自动重试） ========== */
+        .task-card-thumb {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f5f6f8 0%, #eceef1 100%);
+            cursor: zoom-in;
+            flex-shrink: 0;
+        }
+
+        .task-card-thumb img.thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .task-card-thumb img.thumb-img.loaded {
+            opacity: 1;
+        }
+
+        .thumb-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #adb5bd;
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .thumb-spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #dee2e6;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: thumb-spin 0.8s linear infinite;
+        }
+
+        @keyframes thumb-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .thumb-error {
+            cursor: pointer;
+        }
+
+        .thumb-error:hover .thumb-placeholder {
+            color: #868e96;
         }
 
         .task-card {
@@ -468,6 +622,28 @@
                 font-size: 14px;
                 padding: 8px 12px;
             }
+            /* 移动端卡片自适应：单列小尺寸卡片 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+            .task-card-thumb {
+                height: 120px;
+            }
+        }
+
+        @media (min-width: 601px) and (max-width: 900px) {
+            /* 平板 / 小屏 PC 自适应 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+        }
+
+        @media (min-width: 1400px) {
+            /* 大屏 PC 自适应：更小的最小宽度以容纳更多列 */
+            .task-card-container {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            }
         }
 
         @media (max-width: 400px) {
@@ -723,6 +899,73 @@
             margin: 0;
             text-align: left;
         }
+
+        /* ========== 粘贴预览卡 ========== */
+        .paste-preview-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: none; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        .paste-preview-overlay.show { display: flex; }
+        
+        .paste-preview-card {
+            background: white; border-radius: 12px;
+            width: 100%; max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            animation: paste-card-in 0.2s ease;
+        }
+        @keyframes paste-card-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        
+        .paste-preview-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+        }
+        .paste-preview-title { font-weight: 600; color: #2c3e50; font-size: 15px; }
+        .paste-preview-close {
+            background: none; border: none; font-size: 22px; color: #6c757d;
+            cursor: pointer; line-height: 1; padding: 0 4px;
+        }
+        .paste-preview-close:hover { color: #212529; }
+        
+        .paste-preview-thumb {
+            position: relative; width: 100%; height: 180px;
+            background: linear-gradient(135deg, #f5f6f8 0%, #eceef1 100%);
+            overflow: hidden;
+        }
+        .paste-preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .paste-preview-info { padding: 14px 16px; }
+        .paste-preview-badges {
+            display: flex; gap: 8px; align-items: center;
+            margin-bottom: 8px; flex-wrap: wrap;
+        }
+        .paste-preview-id { font-size: 13px; color: #007bff; font-weight: 600; }
+        .paste-preview-dup-tag {
+            padding: 2px 8px; border-radius: 4px;
+            background: #e2e3e5; color: #6c757d;
+            font-size: 11px; font-weight: 600;
+        }
+        .paste-preview-text {
+            font-size: 14px; color: #2c3e50;
+            word-break: break-word; line-height: 1.5;
+            max-height: 60px; overflow-y: auto;
+        }
+        
+        /* 重复：缩略图与文本灰掉 */
+        .paste-preview-card.is-duplicate .paste-preview-thumb,
+        .paste-preview-card.is-duplicate .paste-preview-text {
+            opacity: 0.45;
+            filter: grayscale(0.6);
+        }
+        
+        .paste-preview-actions { display: flex; gap: 8px; padding: 0 16px 16px; }
+        .paste-preview-actions .unified-button { flex: 1; margin: 4px 0; }
     </style>
 </head>
 <body>
@@ -745,6 +988,8 @@
     <button class="side-menu-item" onclick="importDataFromText()">📥 导入数据 (粘贴)</button>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" onclick="showChangelogModal()">📝 更新日志</button>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" onclick="openGithubBackupModal()">☁️ GitHub 备份</button>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleFileImport(event)"/>
 </div>
 
@@ -832,7 +1077,13 @@
     </div>
 </div>
 
-<h2>任务列表</h2>
+<div class="list-title-row" style="display:flex; align-items:center; justify-content:space-between; margin-top:20px;">
+    <h2 style="margin:0;">任务列表</h2>
+    <div class="list-layout-toggle" role="group" aria-label="视图切换">
+        <button id="layout-card-btn" class="layout-toggle-btn active" onclick="setLayoutMode('card')" title="卡片视图">🔳 卡片</button>
+        <button id="layout-list-btn" class="layout-toggle-btn" onclick="setLayoutMode('list')" title="列表视图">☰ 列表</button>
+    </div>
+</div>
 <div class="task-card-container" id="task-card-list">
     <!-- 卡片式任务列表将在这里渲染 -->
 </div>
@@ -849,6 +1100,25 @@
     <button class="mobile-action-close" id="mobile-action-close">关闭</button>
 </div>
 
+<!-- 粘贴预览卡 -->
+<div id="paste-preview-overlay" class="paste-preview-overlay" onclick="closePastePreview()">
+    <div class="paste-preview-card" id="paste-preview-card" onclick="event.stopPropagation()">
+        <div class="paste-preview-header">
+            <span class="paste-preview-title">📋 粘贴预览</span>
+            <button class="paste-preview-close" onclick="closePastePreview()" title="关闭">&times;</button>
+        </div>
+        <div class="paste-preview-thumb" id="paste-preview-thumb"></div>
+        <div class="paste-preview-info">
+            <div class="paste-preview-badges" id="paste-preview-badges"></div>
+            <div class="paste-preview-text" id="paste-preview-text"></div>
+        </div>
+        <div class="paste-preview-actions">
+            <button class="unified-button btn-cancel" onclick="closePastePreview()">取消</button>
+            <button class="unified-button btn-save" id="paste-preview-add" onclick="confirmPasteAdd()">✅ 加入</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let db;
     const dbName = "taskDB";
@@ -862,6 +1132,20 @@
     // ✅ 任务数据缓存（用于同步复制，避免 iOS 手势上下文丢失）
     let gCachedTasks = [];
 
+    // ✅ 启动时同步"卡片/列表"视图切换按钮的选中态（模式持久化在 localStorage）
+    (function initLayoutToggleUI() {
+        const apply = () => {
+            const cardBtn = document.getElementById('layout-card-btn');
+            const listBtn = document.getElementById('layout-list-btn');
+            if (!cardBtn || !listBtn) return false;
+            const mode = localStorage.getItem('taskLayoutMode') || 'card';
+            cardBtn.classList.toggle('active', mode === 'card');
+            listBtn.classList.toggle('active', mode === 'list');
+            return true;
+        };
+        if (!apply()) document.addEventListener('DOMContentLoaded', apply);
+    })();
+
     const request = indexedDB.open(dbName, 4);
 
     request.onerror = e => console.error("数据库打开失败", e);
@@ -870,6 +1154,8 @@
         // ✅ 启动时加载配置
         loadGlobalConfigs();
         loadTasksFromIndexedDB();
+        // ✅ 必须在这里调用，确保 db 对象和 gCachedTasks 已就绪
+        autoBackup(); 
         // ⚠️ 不再处理 URL 参数
     };
 
@@ -982,9 +1268,12 @@
     // ========== 安全工具函数 ==========
     function escapeHtml(text) {
         if (typeof text !== 'string') return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return text
+            .replace(/&/g, '&amp;')   // & 必须最先替换
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // ========== Toast 通知函数 ==========
@@ -1016,6 +1305,51 @@
 
     // ========== 更新日志数据（从 README 提取，写死在代码中）==========
     const CHANGELOG_DATA = [
+        {
+            date: "2026-11-23 15:30:00",
+            title: "Add GitHub cloud backup system and optimize auto-sync logic",
+            description: "新增纯前端 GitHub 备份功能，支持按设备/浏览器隔离、AES加密存储及自动/手动备份；新增本地操作日志面板，精准记录同步状态与数据量；优化空数据拦截与首次备份 404 误报问题；增加自动备份成功静默提示及无记录时的友好引导"
+        },
+        {
+            date: "2026-11-23 11:30:00",
+            title: "Add paste preview card and incremental card rendering",
+            description: "📋 粘贴后不再直接入库，先弹预览卡展示缩略图、来源徽章、ID 与重复标记，确认后才加入；卡片视图改为增量 diff 渲染，新增/删除/修改单个卡片时仅加载对应缩略图，不再全量重载"
+        },
+        {
+            date: "2026-11-23 11:10:00",
+            title: "Random work uses unified preview page",
+            description: "🎲 随机作品按钮改用新重构的统一预览页 PrictureView，与 ✨ 收藏链接按钮共用同一落地页，旧 TestPicture / pictureForP 两套页面不再使用"
+        },
+        {
+            date: "2026-11-23 10:50:00",
+            title: "Clear inputs when cancel save",
+            description: "保存时触发重复校验并选择取消保存（含 10 秒自动取消）时，同步清空任务文本与备注输入框"
+        },
+        {
+            date: "2026-11-23 10:30:00",
+            title: "Fix XSS vulnerability in escapeHtml",
+            description: "修复 escapeHtml 未转义引号导致任务文本可闭合属性引号注入脚本的 XSS 风险；改为同时转义 & < > \" ' 五个字符"
+        },
+        {
+            date: "2026-11-20 09:46:51",
+            title: "Refactor task saving with Promise and duplicate check",
+            description: "保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示"
+        },
+        {
+            date: "2026-11-20 09:45:08",
+            title: "Refactor ID extraction logic to ignore mentions",
+            description: "提取作品 ID 时忽略 @昵称: 前缀中的数字（如 @我的123哈哈: 456789 提取 456789），支持半角/全角冒号与多段提及；预览图、本地预览、智能跳转、随机作品等全部同步生效"
+        },
+        {
+            date: "2026-11-20 09:05:00",
+            title: "Add card view",
+            description: "增加卡片页视图，自动加载预览图"
+        },
+        {
+            date: "2026-05-27 15:05:00",
+            title: "Disable local preview functionality",
+            description: "暂时注释掉本地预览相关代码，屏蔽本地预览功能"
+        },
         {
             date: "2026-05-27 13:48:00",
             title: "Add changelog modal functionality",
@@ -1247,11 +1581,25 @@
         });
     }
 
-    // ========== 核心逻辑 ==========
+    // ========== 作品 ID 提取 ==========
+    // ★ 功能2：忽略 "@昵称:" 提及/转发前缀中的数字。
+    // 昵称里常带数字（如 @我的123哈哈），旧逻辑会把它和真实 ID 拼接：
+    //   "@我的123哈哈: 456789" → 旧结果 "123456789"（错误，且会被误判为 Pixiv）
+    // 现在先把 "@昵称:" 整段（含冒号）剔除，再提取，得到 "456789"。
+    // 规则：
+    //   - 半角冒号 ":" 和全角冒号 "：" 都支持
+    //   - 必须存在完整的 "@...:" 结构才剔除；只有 @昵称 没有冒号时不动它
+    //   - 昵称部分不允许包含 冒号/@/换行，防止跨行、跨段误删正文
+    //   - 多段提及（如 "@a1: @b2: 456789"）会全部剔除
+    function stripMentions(text) {
+        return String(text || "").replace(/@[^:：@\n]*[:：]/g, "");
+    }
+    
     function extractNumber(text) {
-        const m = [...text.matchAll(/(\d{9})/g)];
+        const cleaned = stripMentions(text);              // ★ 唯一新增：先剔除 @昵称: 段
+        const m = [...cleaned.matchAll(/(\d{9})/g)];      // 优先取第一个连续 9 位数字（Pixiv）
         if (m.length > 0) return m[0][0];
-        const d = text.match(/\d/g);
+        const d = cleaned.match(/\d/g);                   // 否则拼接所有数字取前 9 位（保留原有逻辑）
         return d ? d.join('').slice(0, 9) : "";
     }
 
@@ -1274,11 +1622,18 @@
     async function addTaskToIndexedDB(task) {
         if (task.favorite === undefined) task.favorite = false;
         // ✅ 不再保存 previewUrl 到数据库，改为实时计算
-        const tx = db.transaction([storeName], "readwrite");
-        tx.objectStore(storeName).add(task).onsuccess = () => {
-            applyCurrentFilter();
-            clearTaskInputs();
-        };
+        // ★ 返回真正等待写入完成的 Promise：供 saveTask await，写入失败可被感知
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction([storeName], "readwrite");
+            tx.objectStore(storeName).add(task);
+            tx.oncomplete = () => {
+                applyCurrentFilter();   // 保留原行为：刷新列表
+                clearTaskInputs();      // 保留原行为：清空输入框
+                resolve(true);
+            };
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error("写入事务被中止"));
+        });
     }
 
     function updateTaskInDB(taskId, updates) {
@@ -1306,7 +1661,7 @@
                 tasks.sort((a, b) => b.createdAt - a.createdAt);
                 // ✅ 缓存数据，用于同步复制
                 gCachedTasks = [...tasks];
-                displayTasks(tasks);
+                renderList(tasks);
                 updateTaskStats();
                 resolve(true);
             };
@@ -1500,18 +1855,18 @@
         }
     }
 
-    // ========== 本地预览（JM 和 Pixiv 都支持）==========
-    function openLocalPreview(id, sourceType) {
-        let url;
-        if (sourceType === 'pixiv') {
-            // Pixiv 类型：跳转到 pictureForP
-            url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
-        } else {
-            // JM 类型：跳转到 TestPicture
-            url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
-        }
-        window.open(url, '_blank');
-    }
+    // ========== 本地预览（JM 和 Pixiv 都支持）【已屏蔽】==========
+    // function openLocalPreview(id, sourceType) {
+    //     let url;
+    //     if (sourceType === 'pixiv') {
+    //         // Pixiv 类型：跳转到 pictureForP
+    //         url = `https://booksreaders1.github.io/pictureForP/?pid=${id}`;
+    //     } else {
+    //         // JM 类型：跳转到 TestPicture
+    //         url = `https://booksreaders1.github.io/TestPicture/?id=${id}`;
+    //     }
+    //     window.open(url, '_blank');
+    // }
 
     // ========== 收藏链接跳转（JM 和 Pixiv 都支持）==========
     function openFavoriteLink(id, sourceType) {
@@ -1522,19 +1877,287 @@
     // ========== UI 渲染（改良版方案一：卡片式布局）==========
     let currentMobileTaskId = null; // 当前移动端操作的任务 ID
 
+    // ========== 列表页视图模式（卡片 / 列表） ==========
+    // 'card'：网格卡片视图（带缩略图，虚拟滚动懒加载）
+    // 'list'：单列行式列表视图（无缩略图，不加载图片）
+    let gLayoutMode = localStorage.getItem('taskLayoutMode') || 'card';
+
+    function setLayoutMode(mode) {
+        if (mode !== 'card' && mode !== 'list') return;
+        if (gLayoutMode === mode) return;
+        gLayoutMode = mode;
+        try { localStorage.setItem('taskLayoutMode', mode); } catch (e) { /* 隐私模式下忽略 */ }
+
+        const cardBtn = document.getElementById('layout-card-btn');
+        const listBtn = document.getElementById('layout-list-btn');
+        if (cardBtn) cardBtn.classList.toggle('active', mode === 'card');
+        if (listBtn) listBtn.classList.toggle('active', mode === 'list');
+
+        // 用当前缓存数据按新模式重新渲染（布局变化需全量重建）
+        renderList(gCachedTasks, true);
+    }
+
+   // ========== 缩略图虚拟滚动懒加载管理器 ==========
+    // - 仅为进入视口（含预加载边距）的卡片发起图片请求，未滚动到的数据不加载
+    // - <img> 始终保留在 DOM 中，占位层只覆盖、不删除 img
+    // - 加载失败自动重试（指数退避），最多 MAX_RETRY 次；超限后显示"点击重试"
+    const ThumbLoader = (() => {
+        const MAX_RETRY = 3;               // 自动重试上限
+        const RETRY_BASE_DELAY = 800;      // 首次重试延迟(ms)，逐次翻倍
+        const CONCURRENCY = 4;             // 同时下载的图片数量上限
+        const ROOT_MARGIN = '400px 0px';   // 提前 400px 预加载
+    
+        const states = new Map();          // key -> { retryCount, timer, loaded }
+        const inflight = new Set();        // 正在下载的 key
+        const queue = [];                  // 等待下载的 key
+        const elements = new Map();        // key -> thumb 容器元素
+        let activeObserver = null;
+    
+        function makeObserver() {
+            if (!('IntersectionObserver' in window)) return null;
+            return new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    const key = entry.target.dataset.thumbKey;
+                    if (entry.isIntersecting) enqueue(key, entry.target);
+                    else release(key);
+                });
+            }, { rootMargin: ROOT_MARGIN });
+        }
+    
+        function getObserver() {
+            if (!activeObserver) activeObserver = makeObserver();
+            return activeObserver;
+        }
+    
+        function getState(key) {
+            if (!states.has(key)) {
+                states.set(key, { retryCount: 0, timer: null, loaded: false });
+            }
+            return states.get(key);
+        }
+    
+        // ★ 修改点①：只更新占位层内容，绝不覆盖 el.innerHTML，<img> 始终留在 DOM 中
+        function showLoading(el) {
+            el.classList.remove('thumb-error');
+            let ph = el.querySelector('.thumb-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'thumb-placeholder';
+                el.appendChild(ph);
+            }
+            ph.innerHTML = `<div class="thumb-spinner"></div><span>加载中…</span>`;
+        }
+    
+        // ★ 修改点②：同理，错误提示也只改占位层，保留 <img>（否则自动重试/点击重试永远找不到 img）
+        function showError(el, autoRetrying) {
+            el.classList.add('thumb-error');
+            let ph = el.querySelector('.thumb-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'thumb-placeholder';
+                el.appendChild(ph);
+            }
+            ph.innerHTML = `<span>🖼️</span><span>${autoRetrying ? '加载失败，自动重试中…' : '加载失败，点击重试'}</span>`;
+        }
+    
+        function cancelTimer(st) {
+            if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+        }
+    
+        function dequeue(key) {
+            const idx = queue.indexOf(key);
+            if (idx >= 0) queue.splice(idx, 1);
+        }
+    
+        function pump() {
+            while (inflight.size < CONCURRENCY && queue.length > 0) {
+                const key = queue.shift();
+                const el = elements.get(key);
+                const st = states.get(key);
+                if (!el || !st || st.loaded) continue;
+                if (!el.isConnected) continue; // 已被 DOM 移除
+                startLoad(key, el, st);
+            }
+        }
+    
+        function enqueue(key, el) {
+            const st = getState(key);
+            elements.set(key, el);
+    
+            if (st.loaded) return; // 修复后此注释才真正成立：img 一直在 DOM 里且带 src，滚回视口由浏览器缓存直接恢复显示
+            cancelTimer(st);
+            if (inflight.has(key) || queue.includes(key)) return;
+            queue.push(key);
+            pump();
+        }
+    
+        // 渲染后调用：观察容器内所有缩略图，进入视口时才发起图片请求
+        function observeAll(container) {
+            const obs = getObserver();
+            const thumbs = container.querySelectorAll('.task-card-thumb');
+            if (!obs) {
+                // 不支持 IntersectionObserver 的旧浏览器：降级为直接加载（仍带重试）
+                thumbs.forEach(el => enqueue(el.dataset.thumbKey, el));
+                return;
+            }
+            thumbs.forEach(el => {
+                obs.observe(el);
+                // IO 首次回调是异步的；对当前已在视口内的元素立即尝试入队，避免闪烁延迟
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight + 400 && rect.bottom > -100) {
+                    enqueue(el.dataset.thumbKey, el);
+                }
+            });
+        }
+    
+        // 离开视口：取消排队/重试；已成功的图片保留在 DOM（浏览器缓存），未成功的不发起请求
+        function release(key) {
+            const st = states.get(key);
+            if (!st || st.loaded) return;
+            dequeue(key);
+            cancelTimer(st);
+        }
+    
+        function scheduleRetry(key, st) {
+            if (st.retryCount >= MAX_RETRY) {
+                const el = elements.get(key);
+                if (el && el.isConnected && !st.loaded) showError(el, false);
+                return;
+            }
+            st.retryCount++;
+            const delay = RETRY_BASE_DELAY * Math.pow(2, st.retryCount - 1);
+            st.timer = setTimeout(() => {
+                st.timer = null;
+                const curEl = elements.get(key);
+                if (!curEl || !curEl.isConnected || st.loaded) return;
+                queue.push(key);
+                pump();
+            }, delay);
+        }
+    
+        // ★ 修改点③：startLoad —— showLoading 不再删除 img；成功时移除占位层；回调加“过期”防护
+        function startLoad(key, el, st) {
+            inflight.add(key);
+            const img = el.querySelector('img.thumb-img');
+            if (!img) { inflight.delete(key); pump(); return; } // 兜底保留：修复后正常情况下永远不会命中
+    
+            showLoading(el); // 现在只替换占位层内容，<img> 原地不动、仍在 DOM 中
+    
+            const finish = () => {
+                // 只有回调仍属于当前这次渲染的 DOM 时才清理 inflight，
+                // 防止重渲染后旧图片的迟到回调误删新一轮的同名 key
+                if (elements.get(key) === el) inflight.delete(key);
+                pump();
+            };
+    
+            const onLoad = () => {
+                img.removeEventListener('load', onLoad);
+                img.removeEventListener('error', onErr);
+                st.loaded = true;
+                st.retryCount = 0;
+                if (elements.get(key) === el && el.isConnected) {
+                    img.classList.add('loaded');   // opacity 0 -> 1，图片淡入（img 就在 DOM 里，立刻可见）
+                    el.classList.remove('thumb-error');
+                    const ph = el.querySelector('.thumb-placeholder');
+                    if (ph) ph.remove();           // ★ 关键：移除盖在图片上的占位层，图片才露得出来
+                }
+                finish();
+            };
+            const onErr = () => {
+                img.removeEventListener('load', onLoad);
+                img.removeEventListener('error', onErr);
+                finish();
+                // 过期回调（容器已被重渲染替换）：不显示错误、不安排重试，避免污染新一轮渲染
+                if (elements.get(key) !== el || !el.isConnected) return;
+                showError(el, st.retryCount < MAX_RETRY);
+                scheduleRetry(key, st);
+            };
+    
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onErr);
+    
+            // 这一行本身没变；变的是：此刻 img 仍在 DOM 中，加载成功后用户能真正看到
+            img.src = el.dataset.thumbSrc;
+        }
+    
+        // ★ 修改点④：手动重试 —— img 现在永远找得到，清 src 真正生效；并立即给出“加载中”反馈
+        function manualRetry(key) {
+            const st = states.get(key);
+            const el = elements.get(key);
+            if (!st || !el) return;
+            cancelTimer(st);
+            st.retryCount = 0;
+            st.loaded = false;
+            el.classList.remove('thumb-error');
+            const img = el.querySelector('img.thumb-img'); // 修复后这里必然能拿到 img
+            if (img) {
+                img.classList.remove('loaded');
+                img.removeAttribute('src'); // 清掉旧 src，保证重新赋同一个 URL 也会重新走加载流程
+            }
+            showLoading(el); // 点击后立刻从“失败”切回“加载中”反馈
+            enqueue(key, el);
+        }
+
+        // 观察单个缩略图（增量渲染时用于新插入的卡片）
+        function observe(el) {
+            const obs = getObserver();
+            if (!obs) { enqueue(el.dataset.thumbKey, el); return; }
+            obs.observe(el);
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight + 400 && rect.bottom > -100) {
+                enqueue(el.dataset.thumbKey, el);
+            }
+        }
+    
+        // 彻底清除某个 key（卡片被删除/重建时调用）：取消重试定时器、移出队列、释放并发位
+        function forget(key, el) {
+            const st = states.get(key);
+            if (st) cancelTimer(st);
+            states.delete(key);
+            elements.delete(key);
+            dequeue(key);
+            inflight.delete(key);
+            if (el && activeObserver) activeObserver.unobserve(el);
+        }
+        
+        // 渲染前调用：解除旧 DOM 引用并断开观察器
+        function reset() {
+            states.forEach(st => cancelTimer(st));
+            states.clear();
+            elements.clear();
+            queue.length = 0;
+            inflight.clear();
+            if (activeObserver) { activeObserver.disconnect(); activeObserver = null; }
+        }
+    
+        return { reset, manualRetry, observe, forget, observeAll };
+    })();
+
+    // 统一入口：根据当前视图模式渲染列表
+    // full=true：全量重建（仅卡片/列表切换时使用）；否则增量 diff，复用已有卡片与已加载缩略图
+    function renderList(tasks, full = false) {
+        const container = document.getElementById("task-card-list");
+        container.classList.toggle("list-mode", gLayoutMode === 'list');
+        if (full) {
+            ThumbLoader.reset();
+            container.innerHTML = "";
+        }
+        displayTasks(tasks);
+    }
+
     function displayTasks(tasks) {
         const container = document.getElementById("task-card-list");
-        container.innerHTML = "";
         const searchTerm = (document.getElementById("search")?.value || "").toLowerCase();
         const filtered = tasks.filter(task =>
             task.text.toLowerCase().includes(searchTerm) ||
             task.remark.toLowerCase().includes(searchTerm)
         );
-
+    
         // ✅ 缓存过滤后的数据，用于同步复制
         gCachedTasks = [...filtered];
-
+    
         if (filtered.length === 0) {
+            ThumbLoader.reset();
             container.innerHTML = `
                 <div class="empty-state" style="grid-column: 1/-1;">
                     <div class="empty-state-icon">📭</div>
@@ -1543,80 +2166,173 @@
             `;
             return;
         }
-
+    
+        container.querySelector('.empty-state')?.remove();
+    
+        // 现有卡片按任务 id 建索引
+        const existing = new Map();
+        container.querySelectorAll('.task-card').forEach(c => existing.set(c.dataset.taskId, c));
+    
+        const newThumbs = [];   // 本次需要新观察的缩略图
+        const seen = new Set();
+    
         filtered.forEach(task => {
-            const escapedText = escapeHtml(task.text || "");
-            const escapedRemark = escapeHtml(task.remark || "");
-            const card = document.createElement("div");
-            card.className = "task-card";
-            
-            // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
-            const sourceType = getSourceType(task.text || "");
-            const isJM = (sourceType === 'jm');
-            const isPixiv = (sourceType === 'pixiv');
-            const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
-            
-            // 状态样式类
-            let statusClass = "status-pending";
-            if (task.status === "已完成") statusClass = "status-completed";
-            else if (task.status === "已失效") statusClass = "status-invalid";
-
-            // 收藏状态
-            const favActive = task.favorite ? "active" : "";
-            const favIcon = task.favorite ? "⭐" : "☆";
-
-            // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）
-            const localPreviewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="openLocalPreview('${num}', '${sourceType}')" title="本地预览">📖</button>` : '';
-            
-            // 生成收藏链接按钮 HTML（仅 JM 和 Pixiv 类型显示，跳转到 booksreaders1.github.io/PrictureView）
-            const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
-            
-            // 生成预览按钮 HTML（仅 JM 和 Pixiv 类型显示，预览第一张图片）
-            const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
-            
-            // 生成智能跳转按钮 HTML（仅 pixiv 或 JM 类型显示）
-            const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
-
-            // 生成来源标签 HTML
-            let sourceTagHtml = '';
-            if (sourceType === 'pixiv') {
-                sourceTagHtml = '<span class="task-card-source-tag tag-pixiv">Pixiv</span>';
-            } else if (sourceType === 'jm') {
-                sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
+            const key = String(task.id);
+            seen.add(key);
+            let card = existing.get(key);
+            if (card) {
+                // 已有卡片：编号/来源未变则复用缩略图，内容重建
+                const fresh = refreshCard(card, task, newThumbs);
+                card.remove();
+                card = fresh;
+            } else {
+                // 新增卡片
+                card = buildTaskCard(task);
+                const thumb = card.querySelector('.task-card-thumb');
+                if (thumb) newThumbs.push(thumb);
             }
-
-            card.innerHTML = `
-                <div class="task-card-header">
-                    <div class="task-card-title-wrapper">
-                        <div class="task-card-title">${escapedText}</div>
-                        <button class="task-card-favorite-btn ${favActive}" onclick="toggleFavorite(${task.id})" title="收藏">${favIcon}</button>
-                    </div>
-                </div>
-                <div class="task-card-meta">
-                    <span>📝 ${escapedRemark || "无备注"}</span>
-                    ${sourceTagHtml}
-                    <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
-                </div>
-                <div class="task-card-actions">
-                    <div class="task-card-primary-actions">
-                        ${previewBtn}
-                        ${smartJumpBtn}
-                        ${localPreviewBtn}
-                        ${favoriteLinkBtn}
-                    </div>
-                    <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
-                    <div class="task-card-more-menu" id="more-menu-${task.id}">
-                        <button class="task-card-more-item" onclick="completeTask(${task.id}); hideAllMoreMenus()">✅ 标记完成</button>
-                        <button class="task-card-more-item" onclick="toggleFavorite(${task.id}); hideAllMoreMenus()">⭐ 收藏/取消</button>
-                        <button class="task-card-more-item" onclick="invalidateTask(${task.id}); hideAllMoreMenus()">❌ 标记失效</button>
-                        <button class="task-card-more-item" onclick="copyTaskText(${task.id}); hideAllMoreMenus()">📋 复制内容</button>
-                        <button class="task-card-more-item" onclick="editTaskInCard(${task.id}); hideAllMoreMenus()">✏️ 编辑任务</button>
-                        <button class="task-card-more-item danger" onclick="deleteTask(${task.id}); hideAllMoreMenus()">🗑️ 删除任务</button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
+            container.appendChild(card); // 新增=插入；已有=移动到当前顺序（节点复用，图片不重载）
         });
+    
+        // 移除本次不在列表中的卡片，并清理其缩略图状态
+        existing.forEach((card, key) => {
+            if (!seen.has(key)) {
+                const thumb = card.querySelector('.task-card-thumb');
+                if (thumb) ThumbLoader.forget(key, thumb);
+                card.remove();
+            }
+        });
+    
+        // ✅ 只观察新缩略图（旧图已在 DOM 且已加载，不再触发任何请求）
+        if (gLayoutMode === 'card' && newThumbs.length > 0) {
+            requestAnimationFrame(() => newThumbs.forEach(el => ThumbLoader.observe(el)));
+        }
+    }
+
+    // 构建单张任务卡片（不入库、不观察缩略图，观察由调用方决定）
+    function buildTaskCard(task) {
+        const escapedText = escapeHtml(task.text || "");
+        const escapedRemark = escapeHtml(task.remark || "");
+        const card = document.createElement("div");
+        card.className = "task-card";
+        card.dataset.taskId = task.id;
+    
+        // 判断来源类型并获取 ID（JM 和 Pixiv 都支持本地预览）
+        const sourceType = getSourceType(task.text || "");
+        const isJM = (sourceType === 'jm');
+        const isPixiv = (sourceType === 'pixiv');
+        const num = (isJM || isPixiv) ? extractNumber(task.text || "") : null;
+    
+        // ★ 增量渲染：记录本卡的编号/来源，供下次更新时比对是否可复用缩略图
+        card.dataset.num = extractNumber(task.text || "");
+        card.dataset.source = sourceType;
+    
+        // 状态样式类
+        let statusClass = "status-pending";
+        if (task.status === "已完成") statusClass = "status-completed";
+        else if (task.status === "已失效") statusClass = "status-invalid";
+    
+        // 收藏状态
+        const favActive = task.favorite ? "active" : "";
+        const favIcon = task.favorite ? "⭐" : "☆";
+    
+        // 生成本地预览按钮 HTML（JM 和 Pixiv 都显示）【已屏蔽】
+        const localPreviewBtn = '';
+        const favoriteLinkBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-favorite-link" onclick="openFavoriteLink('${num}', '${sourceType}')" title="本地预览（新）">✨</button>` : '';
+        const previewBtn = (isJM || isPixiv) ? `<button class="task-card-btn task-card-btn-secondary" onclick="previewTask(${task.id})" title="预览">🖼️</button>` : '';
+        const smartJumpBtn = (sourceType === 'pixiv' || sourceType === 'jm') ? `<button class="task-card-btn task-card-btn-primary" onclick="smartJump('${escapeHtml(escapedText)}')" title="智能跳转">🔗</button>` : '';
+    
+        // 生成来源标签 HTML
+        let sourceTagHtml = '';
+        if (sourceType === 'pixiv') {
+            sourceTagHtml = '<span class="task-card-source-tag tag-pixiv">Pixiv</span>';
+        } else if (sourceType === 'jm') {
+            sourceTagHtml = '<span class="task-card-source-tag tag-jm">JM</span>';
+        }
+    
+        // 生成缩略图 HTML（仅卡片视图 + JM/Pixiv 类型；src 仍由 ThumbLoader 入视口时写入）
+        let thumbHtml = '';
+        if (gLayoutMode === 'card' && (isJM || isPixiv)) {
+            const previewUrl = generatePreviewUrl(task.text || "");
+            if (previewUrl) {
+                const safeSrc = escapeHtml(previewUrl);
+                const thumbKey = `${task.id}`;
+                thumbHtml = `
+                    <div class="task-card-thumb" data-thumb-key="${thumbKey}" data-thumb-src="${safeSrc}"
+                         onclick="onThumbClick(event, '${thumbKey}')" title="点击预览">
+                        <img class="thumb-img" alt="" decoding="async" draggable="false">
+                        <div class="thumb-placeholder"><span>🖼️</span><span>等待加载</span></div>
+                    </div>`;
+            }
+        }
+    
+        card.innerHTML = `
+            ${thumbHtml}
+            <div class="task-card-header">
+                <div class="task-card-title-wrapper">
+                    <div class="task-card-title">${escapedText}</div>
+                    <button class="task-card-favorite-btn ${favActive}" onclick="toggleFavorite(${task.id})" title="收藏">${favIcon}</button>
+                </div>
+            </div>
+            <div class="task-card-meta">
+                <span>📝 ${escapedRemark || "无备注"}</span>
+                ${sourceTagHtml}
+                <span class="task-card-status-badge ${statusClass}" onclick="cycleTaskStatus(${task.id})">${escapeHtml(task.status)}</span>
+            </div>
+            <div class="task-card-actions">
+                <div class="task-card-primary-actions">
+                    ${previewBtn}
+                    ${smartJumpBtn}
+                    ${localPreviewBtn}
+                    ${favoriteLinkBtn}
+                </div>
+                <button class="task-card-btn task-card-btn-more" onclick="toggleMoreMenu(event, ${task.id})" title="更多操作">⋮</button>
+                <div class="task-card-more-menu" id="more-menu-${task.id}">
+                    <button class="task-card-more-item" onclick="completeTask(${task.id}); hideAllMoreMenus()">✅ 标记完成</button>
+                    <button class="task-card-more-item" onclick="toggleFavorite(${task.id}); hideAllMoreMenus()">⭐ 收藏/取消</button>
+                    <button class="task-card-more-item" onclick="invalidateTask(${task.id}); hideAllMoreMenus()">❌ 标记失效</button>
+                    <button class="task-card-more-item" onclick="copyTaskText(${task.id}); hideAllMoreMenus()">📋 复制内容</button>
+                    <button class="task-card-more-item" onclick="editTaskInCard(${task.id}); hideAllMoreMenus()">✏️ 编辑任务</button>
+                    <button class="task-card-more-item danger" onclick="deleteTask(${task.id}); hideAllMoreMenus()">🗑️ 删除任务</button>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+    
+    // 更新已有卡片：编号/来源未变 → 移植旧缩略图（已加载的图零请求）；
+    // 变了 → 弃掉旧缩略图状态，新缩略图加入待观察队列（只重载这一张）
+    function refreshCard(card, task, newThumbs) {
+        const key = String(task.id);
+        const oldThumb = card.querySelector('.task-card-thumb');
+        const num = extractNumber(task.text || "");
+        const source = getSourceType(task.text || "");
+        const thumbUnchanged = (num === (card.dataset.num || '')) && (source === (card.dataset.source || ''));
+    
+        const fresh = buildTaskCard(task);
+        const freshThumb = fresh.querySelector('.task-card-thumb');
+    
+        if (oldThumb && thumbUnchanged && freshThumb) {
+            freshThumb.replaceWith(oldThumb);   // 旧节点（含已加载图片）原样搬进新卡片
+        } else {
+            if (oldThumb) ThumbLoader.forget(key, oldThumb);
+            if (freshThumb) newThumbs.push(freshThumb);
+        }
+        return fresh;
+    }
+
+    // 点击缩略图：加载失败时手动重试，否则打开大图预览
+    function onThumbClick(event, thumbKey) {
+        event.stopPropagation();
+        const el = document.querySelector(`.task-card-thumb[data-thumb-key="${thumbKey}"]`);
+        if (!el) return;
+        if (el.classList.contains('thumb-error')) {
+            ThumbLoader.manualRetry(thumbKey);
+            return;
+        }
+        const card = el.closest('.task-card');
+        const idAttr = card?.dataset.taskId;
+        if (idAttr) previewTask(parseInt(idAttr, 10));
     }
 
     function hideAllMoreMenus() {
@@ -1786,11 +2502,60 @@
         }
     }
 
-    function saveTask() {
+    // ★ 功能1：保存时查重
+    const DUP_CHECK_MIN_LEN = 5; // 仅对≥5位的“作品ID”查重（与智能跳转/预览一致）；改为 1 则任意数字都查
+    let gSaveInProgress = false; // 保存锁：showConfirm 是非模态 toast，防止确认期间重复触发保存
+    
+    // 找出所有“提取出的作品 ID === num”的已有任务，按创建时间倒序
+    async function findTasksByNumber(num) {
+        const all = await new Promise((resolve, reject) => {
+            const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        return all
+            .filter(t => extractNumber(t.text || "") === num) // 同一套提取规则（同样忽略 @昵称 数字）
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }
+    
+    async function saveTask() {
+        if (gSaveInProgress) return; // 已有保存/确认在进行中，忽略本次触发
+    
         const text = document.getElementById("task-text").value;
         const remark = document.getElementById("task-remark").value;
         if (!text.trim()) { showToast("任务文本不能为空", "error"); return; }
-        addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+    
+        gSaveInProgress = true;
+        try {
+            const num = extractNumber(text); // ① 提取 ID（自动忽略 @昵称: 中的数字）
+    
+            // ② 查重
+            if (num && num.length >= DUP_CHECK_MIN_LEN) {
+                const duplicates = await findTasksByNumber(num);
+                if (duplicates.length > 0) {
+                    const dup = duplicates[0]; // 最近一条重复任务
+                    const snippet = (dup.text || "").trim();
+                    const shortText = snippet.length > 20 ? snippet.slice(0, 20) + "…" : snippet;
+                    // showConfirm 内部会 escapeHtml(message)，这里传原始文本，切勿预先转义
+                    const ok = await showConfirm(
+                        `⚠️ 作品 ID ${num} 已存在（共 ${duplicates.length} 条，如“${shortText}”，状态：${dup.status || "未使用"}）。是否仍要保存？`
+                    );
+                    if (!ok) { // 点“取消”或 10 秒自动取消，都视为不保存
+                        showToast("已取消保存", "info");
+                        clearTaskInputs(); // ★ 新增：取消保存时清空输入框
+                        return; // 保留输入框内容，方便修改后再存
+                    }
+                }
+            }
+    
+            // ③ 无重复，或用户确认继续 → 写库
+            await addTaskToIndexedDB({ text, remark, status: "未使用", createdAt: Date.now() });
+        } catch (err) {
+            console.error("保存任务失败", err);
+            showToast("❌ 保存失败，请重试", "error");
+        } finally {
+            gSaveInProgress = false;
+        }
     }
 
     function clearTaskInputs() {
@@ -1829,37 +2594,30 @@
     }
 
     // ========== 随机作品按钮 ==========
-    function randomWork() {
+   function randomWork() {
         const req = db.transaction([storeName], "readonly").objectStore(storeName).getAll();
         req.onsuccess = () => {
-            let tasks = req.result;
+            const tasks = req.result;
             // 筛选出 pixiv 和 JM 类型的任务
             const validTasks = tasks.filter(t => {
                 const sourceType = getSourceType(t.text);
                 return sourceType === 'pixiv' || sourceType === 'jm';
             });
-            
+    
             if (validTasks.length === 0) {
                 showToast("❌ 没有可用的 Pixiv 或 JM 作品", "warning");
                 return;
             }
-            
+    
             // 随机选择一个
             const randomIndex = Math.floor(Math.random() * validTasks.length);
             const selectedTask = validTasks[randomIndex];
             const sourceType = getSourceType(selectedTask.text);
             const num = extractNumber(selectedTask.text);
-            
-            // 根据类型跳转到对应页面
-            if (sourceType === 'pixiv') {
-                const url = `https://booksreaders1.github.io/pictureForP/?pid=${num}`;
-                window.open(url, '_blank');
-                showToast(`🎲 随机到 Pixiv 作品 #${num}`, "success");
-            } else if (sourceType === 'jm') {
-                const url = `https://booksreaders1.github.io/TestPicture/?id=${num}`;
-                window.open(url, '_blank');
-                showToast(`🎲 随机到 JM 作品 #${num}`, "success");
-            }
+    
+            // 跳转到新重构的统一预览页 PrictureView（复用 ✨ 按钮的 openFavoriteLink，URL 单处维护）
+            openFavoriteLink(num, sourceType);
+            showToast(`🎲 随机到 ${sourceType === 'pixiv' ? 'Pixiv' : 'JM'} 作品 #${num}`, "success");
         };
     }
 
@@ -1873,7 +2631,7 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
@@ -1887,7 +2645,7 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
@@ -1947,19 +2705,107 @@
             tasks.sort((a, b) => b.createdAt - a.createdAt);
             // ✅ 缓存数据，用于同步复制
             gCachedTasks = [...tasks];
-            displayTasks(tasks);
+            renderList(tasks);
         };
     }
 
+    // ========== 粘贴预览卡（单个）==========
+    let gPastePreviewData = null; // { text, num, sourceType, previewUrl, isDuplicate }
+    
     async function pasteFromClipboard() {
         try {
             const text = await navigator.clipboard.readText();
             if (!text.trim()) { showToast("剪贴板为空", "warning"); return; }
-            document.getElementById('task-text').value = text;
-            saveTask();
+            openPastePreview(text);
         } catch (err) {
             showToast("无法读取剪贴板，请在安全环境（HTTPS/localhost）中使用", "error");
         }
+    }
+    
+    async function openPastePreview(text) {
+        const trimmed = text.trim();
+        const num = extractNumber(trimmed);
+        const sourceType = getSourceType(trimmed);
+        const previewUrl = generatePreviewUrl(trimmed);
+    
+        // 查重（复用保存时的查重逻辑）
+        let isDuplicate = false;
+        if (num && num.length >= DUP_CHECK_MIN_LEN) {
+            const duplicates = await findTasksByNumber(num);
+            isDuplicate = duplicates.length > 0;
+        }
+    
+        gPastePreviewData = { text: trimmed, num, sourceType, previewUrl, isDuplicate };
+    
+        const overlay  = document.getElementById('paste-preview-overlay');
+        const card     = document.getElementById('paste-preview-card');
+        const thumbBox = document.getElementById('paste-preview-thumb');
+        const badges   = document.getElementById('paste-preview-badges');
+        const textBox  = document.getElementById('paste-preview-text');
+        const addBtn   = document.getElementById('paste-preview-add');
+    
+        card.classList.remove('is-duplicate');
+        thumbBox.innerHTML = '';
+        badges.innerHTML = '';
+    
+        // 缩略图（复用 generatePreviewUrl；加载中/失败占位）
+        if (previewUrl) {
+            const ph = document.createElement('div');
+            ph.className = 'thumb-placeholder';
+            ph.innerHTML = '<div class="thumb-spinner"></div><span>加载中…</span>';
+            thumbBox.appendChild(ph);
+    
+            const img = document.createElement('img');
+            img.alt = '';
+            img.decoding = 'async';
+            img.onload  = () => ph.remove();
+            img.onerror = () => { ph.innerHTML = '<span>🖼️</span><span>预览图加载失败</span>'; };
+            img.src = previewUrl;
+            thumbBox.appendChild(img);
+        } else {
+            thumbBox.innerHTML = '<div class="thumb-placeholder"><span>📄</span><span>无预览图</span></div>';
+        }
+    
+        // 来源徽章 + ID + 重复标记
+        if (sourceType === 'pixiv') {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag tag-pixiv">Pixiv</span>');
+        } else if (sourceType === 'jm') {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag tag-jm">JM</span>');
+        } else {
+            badges.insertAdjacentHTML('beforeend', '<span class="task-card-source-tag" style="background:#8b5cf6;color:white;">其他</span>');
+        }
+        if (num && num.length >= DUP_CHECK_MIN_LEN) {
+            badges.insertAdjacentHTML('beforeend', `<span class="paste-preview-id">#${escapeHtml(num)}</span>`);
+        }
+        if (isDuplicate) {
+            badges.insertAdjacentHTML('beforeend', '<span class="paste-preview-dup-tag">重复</span>');
+            card.classList.add('is-duplicate');
+            addBtn.innerHTML = '⚠️ 仍要加入';
+        } else {
+            addBtn.innerHTML = '✅ 加入';
+        }
+    
+        textBox.textContent = trimmed;
+        overlay.classList.add('show');
+    }
+    
+    async function confirmPasteAdd() {
+        const data = gPastePreviewData;
+        if (!data) return;
+        gPastePreviewData = null;
+        document.getElementById('paste-preview-overlay').classList.remove('show');
+        try {
+            await addTaskToIndexedDB({ text: data.text, remark: "", status: "未使用", createdAt: Date.now() });
+            showToast("✅ 已加入任务", "success");
+        } catch (err) {
+            console.error("粘贴加入失败", err);
+            showToast("❌ 加入失败，请重试", "error");
+        }
+    }
+    
+    function closePastePreview() {
+        document.getElementById('paste-preview-overlay').classList.remove('show');
+        gPastePreviewData = null;
     }
 
     // ========== 数据导出功能 ==========
@@ -2189,7 +3035,483 @@
     }
 
     // window.onload 不再处理 URL 参数
-</script>
 
+    // ========== GitHub 备份模块 (修正版) ==========
+    function getDeviceId() {
+        const ua = navigator.userAgent;
+        // 提取浏览器核心名称，避免 UA 版本号变动导致 ID 频繁变化
+        let browser = 'unknown';
+        if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'chrome';
+        else if (ua.includes('Firefox')) browser = 'firefox';
+        else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'safari';
+        else if (ua.includes('Edg')) browser = 'edge';
+        
+        // 拼接操作系统前缀，进一步区分 Mac/Win/Linux 下的同名浏览器
+        let os = 'pc';
+        if (/Mobi|Android/i.test(ua)) os = 'mobile';
+        else if (ua.includes('Mac')) os = 'mac';
+        else if (ua.includes('Win')) os = 'win';
+        
+        // 最终格式示例: chrome_win, firefox_mac, safari_mobile
+        return `${browser}_${os}`;
+    }
+    const GH_REPO_OWNER = 'BooksReaders1'; // 👈 改为你的 GitHub 用户名
+    const GH_REPO_NAME = 'task-backups';           // 👈 改为你的仓库名
+    const GH_BRANCH = 'main';              // 👈 改为分支名 (main 或 master)
+    const GH_ENCRYPT_KEY = 'task_backup_2026_string_000123'; // 👈 建议修改为复杂字符串
+    const GH_STORAGE_KEY = 'gh_backup_token';
+    const GH_DEVICE_ID = getDeviceId();
+    
+    let gSelectedBackupName = null;
+    let gSelectedBackupContent = null;
+
+    const GH_LOG_KEY = 'gh_backup_logs'; // 日志存储键名
+    const MAX_LOG_ENTRIES = 50;          // 最多保留50条，防止 localStorage 爆满
+    
+    function addBackupLog(type, status, detail) {
+        const logs = JSON.parse(localStorage.getItem(GH_LOG_KEY) || '[]');
+        const newLog = {
+            time: new Date().toLocaleString(),
+            type: type,       // 'auto' | 'manual' | 'restore'
+            status: status,   // 'success' | 'fail'
+            detail: detail    // 数据量或失败原因
+        };
+        
+        // 新日志插到最前面，并限制总数
+        logs.unshift(newLog);
+        if (logs.length > MAX_LOG_ENTRIES) logs.length = MAX_LOG_ENTRIES;
+        
+        localStorage.setItem(GH_LOG_KEY, JSON.stringify(logs));
+    }
+    
+    function getBackupLogs() {
+        return JSON.parse(localStorage.getItem(GH_LOG_KEY) || '[]');
+    }
+    
+    // --- 工具函数 ---
+    function getGithubToken() { return localStorage.getItem(GH_STORAGE_KEY); }
+    
+    function saveGithubConfig() {
+        const token = document.getElementById('gh-token-input').value.trim();
+        if (!token) { showToast("Token 不能为空", "error"); return; }
+        localStorage.setItem(GH_STORAGE_KEY, token);
+        document.getElementById('gh-status-msg').textContent = "✅ 配置已保存";
+        document.getElementById('gh-status-msg').style.color = "#28a745";
+    }
+    
+    function clearGithubConfig() {
+        localStorage.removeItem(GH_STORAGE_KEY);
+        document.getElementById('gh-token-input').value = "";
+        document.getElementById('gh-status-msg').textContent = "❌ 配置已清除";
+    }
+    
+    function utf8ToBase64(str) {
+        return btoa(new TextEncoder().encode(str).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    }
+    function base64ToUtf8(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+    
+    function encryptData(dataObj) {
+        const jsonStr = JSON.stringify(dataObj);
+        return CryptoJS.AES.encrypt(jsonStr, GH_ENCRYPT_KEY).toString();
+    }
+    function decryptData(cipherText) {
+        const bytes = CryptoJS.AES.decrypt(cipherText, GH_ENCRYPT_KEY);
+        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    }
+    
+    async function ghApi(method, url, body = null) {
+        const token = getGithubToken();
+        if (!token) throw new Error("未配置 GitHub Token");
+        const headers = {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        };
+        const opts = { method, headers };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`https://api.github.com${url}`, opts);
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || `HTTP ${res.status}`);
+        }
+        return res.json();
+    }
+    
+    // --- 核心业务逻辑 ---
+    
+    function getTodayFileName() {
+        const date = new Date().toISOString().slice(0, 10);
+        return `backups/${GH_DEVICE_ID}/${date}.json.enc`;
+    }
+    
+    // ✅ 修正1: 优化自动备份逻辑，增加详细日志
+    async function autoBackup() {
+        console.log("[AutoBackup] 开始检查...");
+        if (!getGithubToken()) return;
+        
+        try {
+            const fileName = getTodayFileName();
+            
+            // ✅ 1. 单独处理“检查文件”的 404，这属于正常流程，不记入失败日志
+            let fileExists = false;
+            try {
+                await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
+                fileExists = true;
+            } catch (checkErr) {
+                if (checkErr.message.includes('404') || checkErr.message.includes('Not Found')) {
+                    fileExists = false; // 确认是文件不存在，继续执行备份
+                } else {
+                    // 如果是网络断了或 Token 错了导致的非 404 错误，才记录为失败
+                    addBackupLog('auto', 'fail', `预检失败: ${checkErr.message}`);
+                    return;
+                }
+            }
+    
+            if (fileExists) {
+                console.log("[AutoBackup] 今日已存在备份，跳过");
+                return; 
+            }
+    
+            // ✅ 2. 真正的备份上传逻辑
+            const tasks = await new Promise(r => {
+                db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
+            });
+            
+            if (!tasks || tasks.length === 0) {
+                return;
+            }
+    
+            const payload = { version: 1, date: new Date().toISOString(), tasks };
+            const content = utf8ToBase64(encryptData(payload));
+    
+            await ghApi('PUT', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}`, {
+                message: `chore: auto backup ${new Date().toLocaleDateString()}`,
+                content: content,
+                branch: GH_BRANCH
+            });
+            
+            addBackupLog('auto', 'success', `${tasks.length}条任务已同步`);
+            showToast("☁️ 今日数据已自动同步至 GitHub", "info", 3000);
+            console.log("[AutoBackup] ✅ 成功");
+    
+        } catch (err) {
+            // ✅ 3. 只有走到这里，才是真正的备份上传失败（如网络中断、权限不足等）
+            addBackupLog('auto', 'fail', err.message);
+            console.error("[AutoBackup] ❌ 上传失败:", err);
+        }
+    }
+    
+    async function manualBackup() {
+        if (!getGithubToken()) { showToast("请先配置 GitHub Token", "warning"); return; }
+        showToast("正在备份...", "info");
+        try {
+            const fileName = getTodayFileName();
+            const tasks = await new Promise(r => {
+                db.transaction([storeName], "readonly").objectStore(storeName).getAll().onsuccess = e => r(e.target.result);
+            });
+            // ✅ 新增：空数据不备份，并给用户明确反馈
+            if (!tasks || tasks.length === 0) {
+                showToast("⚠️ 当前没有任务数据，无法备份", "warning");
+                return;
+            }
+            
+            const payload = { version: 1, date: new Date().toISOString(), tasks };
+            const content = utf8ToBase64(encryptData(payload));
+    
+            let sha = null;
+            try {
+                const file = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}?ref=${GH_BRANCH}`);
+                sha = file.sha;
+            } catch (e) {}
+    
+            const body = {
+                message: `chore: manual backup ${new Date().toLocaleString()}`,
+                content: content,
+                branch: GH_BRANCH
+            };
+            if (sha) body.sha = sha;
+    
+            await ghApi('PUT', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${fileName}`, body);
+            // ✅ 记录成功日志
+            addBackupLog('manual', 'success', `${tasks.length}条任务已备份`);
+            showToast("✅ 备份成功", "success");
+            loadBackupList();
+        } catch (err) {
+            // ✅ 记录失败日志
+            addBackupLog('manual', 'fail', err.message);
+            showToast("❌ 备份失败: " + err.message, "error");
+        }
+    }
+
+    // 全局变量：缓存完整的文件列表，避免重复请求 API
+    let gAllBackupFiles = []; 
+    const DEFAULT_PAGE_SIZE = 10; // 默认显示条数
+    
+    async function loadBackupList(forceLoadAll = false) {
+        if (!getGithubToken()) { showToast("请先配置 Token", "warning"); return; }
+        
+        const listDiv = document.getElementById('gh-backup-list');
+        const logDiv = document.getElementById('gh-log-list');
+        const restoreArea = document.getElementById('gh-restore-area');
+        
+        // 切换面板时重置状态
+        if (logDiv) logDiv.style.display = 'none';
+        if (restoreArea) restoreArea.style.display = 'none';
+        listDiv.style.display = 'block';
+    
+        // 如果是首次加载或强制刷新，才去拉取 API
+        if (gAllBackupFiles.length === 0 || forceLoadAll) {
+            listDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">加载中...</div>';
+            try {
+                const files = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}?ref=${GH_BRANCH}`);
+                
+                if (!Array.isArray(files) || files.length === 0) {
+                    listDiv.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#6c757d;">
+                            <div style="font-size:24px;margin-bottom:8px;">☁️</div>
+                            <div>当前设备暂无备份记录</div>
+                            <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
+                        </div>`;
+                    gAllBackupFiles = [];
+                    return;
+                }
+                
+                // 按文件名倒序（最新的在前）并缓存
+                gAllBackupFiles = files.sort((a, b) => b.name.localeCompare(a.name));
+            } catch (err) {
+                if (err.message.includes('404') || err.message.includes('Not Found')) {
+                    listDiv.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#6c757d;">
+                            <div style="font-size:24px;margin-bottom:8px;">☁️</div>
+                            <div>当前设备暂无备份记录</div>
+                            <div style="font-size:12px;margin-top:4px;">点击「立即备份」创建第一条备份</div>
+                        </div>`;
+                    gAllBackupFiles = [];
+                } else {
+                    listDiv.innerHTML = `<div style="padding:10px;color:red;">加载失败: ${err.message}</div>`;
+                }
+                return;
+            }
+        }
+    
+        // 根据是否展开，决定渲染多少条
+        const displayCount = forceLoadAll ? gAllBackupFiles.length : Math.min(DEFAULT_PAGE_SIZE, gAllBackupFiles.length);
+        const visibleFiles = gAllBackupFiles.slice(0, displayCount);
+        
+        // 生成列表 HTML
+        let html = visibleFiles.map(f => {
+            const dateStr = f.name.replace('.json.enc', ''); 
+            return `
+                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" 
+                     onclick="selectBackup('${f.sha}', '${f.name}')">
+                    <span style="font-size: 13px; font-weight: 500;">📅 ${dateStr}</span>
+                    <span style="font-size: 11px; color: #6c757d;">${f.size ? (f.size/1024).toFixed(1)+'KB' : ''}</span>
+                </div>
+            `;
+        }).join('');
+    
+        // 如果还有更多记录，追加“加载更多”按钮
+        if (gAllBackupFiles.length > DEFAULT_PAGE_SIZE && !forceLoadAll) {
+            const remaining = gAllBackupFiles.length - DEFAULT_PAGE_SIZE;
+            html += `
+                <div style="padding: 12px; text-align: center; background: #f8f9fa; border-top: 1px solid #eee; cursor: pointer; color: #007bff; font-size: 13px;"
+                     onclick="loadBackupList(true)">
+                    📂 还有 ${remaining} 条历史记录，点击加载更多
+                </div>
+            `;
+        } else if (gAllBackupFiles.length <= DEFAULT_PAGE_SIZE) {
+             html += `<div style="padding:8px;text-align:center;font-size:11px;color:#adb5bd;">已显示全部 ${gAllBackupFiles.length} 条记录</div>`;
+        }
+    
+        listDiv.innerHTML = html;
+    }
+    
+    async function selectBackup(sha, name) {
+        gSelectedBackupName = name;
+        gSelectedBackupContent = null;
+        document.getElementById('gh-restore-area').style.display = 'block';
+        document.getElementById('gh-restore-area').querySelector('div').innerHTML = `⏳ 正在读取备份...`;
+        
+        try {
+            const file = await ghApi('GET', `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/backups/${GH_DEVICE_ID}/${name}?ref=${GH_BRANCH}`);
+            const encryptedBase64 = file.content.replace(/\n/g, '');
+            const decryptedJson = decryptData(base64ToUtf8(encryptedBase64));
+            gSelectedBackupContent = decryptedJson;
+            
+            document.getElementById('gh-restore-area').querySelector('div').innerHTML = 
+                `⚠️ 准备还原: <b>${name}</b><br>包含 ${decryptedJson.tasks.length} 条任务。<br>当前数据将被覆盖。`;
+        } catch (err) {
+            document.getElementById('gh-restore-area').querySelector('div').innerHTML = `❌ 读取失败: ${err.message}`;
+            gSelectedBackupContent = null;
+        }
+    }
+    
+    function cancelRestore() {
+        document.getElementById('gh-restore-area').style.display = 'none';
+        gSelectedBackupName = null;
+        gSelectedBackupContent = null;
+    }
+    
+    async function confirmRestore() {
+        if (!gSelectedBackupContent) { showToast("备份内容无效", "error"); return; }
+        try {
+            const tx = db.transaction([storeName], "readwrite");
+            await tx.objectStore(storeName).clear();
+            const store = tx.objectStore(storeName);
+            for (const task of gSelectedBackupContent.tasks) {
+                if (task.text) store.add(task);
+            }
+            await new Promise((resolve, reject) => {
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+            addBackupLog('restore', 'success', `从 ${gSelectedBackupName} 还原了 ${gSelectedBackupContent.tasks.length}条`);
+            showToast("✅ 还原成功", "success");
+            closeGithubBackupModalBtn();
+            loadTasksFromIndexedDB();
+        } catch (err) {
+            showToast("❌ 还原失败: " + err.message, "error");
+        }
+    }
+    
+    // --- UI 控制 ---
+    function openGithubBackupModal() {
+        const overlay = document.getElementById('github-backup-overlay');
+        const input = document.getElementById('gh-token-input');
+        input.value = getGithubToken() || '';
+        overlay.classList.add('show');
+        document.getElementById('gh-backup-list').style.display = 'none';
+        document.getElementById('gh-restore-area').style.display = 'none';
+    }
+    
+    function closeGithubBackupModal(e) {
+        if (e && e.target.id === 'github-backup-overlay') {
+            document.getElementById('github-backup-overlay').classList.remove('show');
+        }
+    }
+    function closeGithubBackupModalBtn() {
+        document.getElementById('github-backup-overlay').classList.remove('show');
+    }
+    
+    // 全局变量：缓存完整的日志列表
+    let gAllBackupLogs = []; 
+    const LOG_PAGE_SIZE = 10; // 日志默认显示条数
+    
+    function loadBackupLogs(forceLoadAll = false) {
+        // 切换面板时重置状态
+        document.getElementById('gh-backup-list').style.display = 'none';
+        document.getElementById('gh-restore-area').style.display = 'none';
+        
+        const logDiv = document.getElementById('gh-log-list');
+        logDiv.style.display = 'block';
+        
+        // 首次加载或强制刷新时，从 localStorage 读取全量数据并缓存
+        if (gAllBackupLogs.length === 0 || forceLoadAll) {
+            gAllBackupLogs = getBackupLogs(); // 复用之前的读取函数
+        }
+    
+        // 根据是否展开，决定渲染多少条
+        const displayCount = forceLoadAll ? gAllBackupLogs.length : Math.min(LOG_PAGE_SIZE, gAllBackupLogs.length);
+        const visibleLogs = gAllBackupLogs.slice(0, displayCount);
+        
+        if (visibleLogs.length === 0) {
+            logDiv.innerHTML = '<div style="padding:10px;text-align:center;color:#6c757d;">暂无备份日志</div>';
+            return;
+        }
+    
+        // 生成日志列表 HTML
+        let html = visibleLogs.map(log => {
+            let statusBadge = '';
+            if (log.status === 'success') statusBadge = '<span style="color:#28a745;font-weight:bold;">✅ 成功</span>';
+            else if (log.status === 'fail') statusBadge = '<span style="color:#dc3545;font-weight:bold;">❌ 失败</span>';
+            else statusBadge = '<span style="color:#ffc107;font-weight:bold;">⏭️ 跳过</span>';
+            
+            const typeLabel = log.type === 'auto' ? '🤖 自动' : (log.type === 'restore' ? '↩️ 还原' : '✋ 手动');
+    
+            return `
+                <div style="padding: 8px 12px; border-bottom: 1px solid #f0f0f0; line-height: 1.5;">
+                    <div style="display:flex; justify-content:space-between; color:#6c757d;">
+                        <span>${typeLabel}</span>
+                        <span>${log.time}</span>
+                    </div>
+                    <div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center;">
+                        ${statusBadge}
+                        <span style="color:#495057; word-break: break-all;">${escapeHtml(log.detail)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    
+        // 如果还有更多日志，追加“加载更多”按钮
+        if (gAllBackupLogs.length > LOG_PAGE_SIZE && !forceLoadAll) {
+            const remaining = gAllBackupLogs.length - LOG_PAGE_SIZE;
+            html += `
+                <div style="padding: 12px; text-align: center; background: #f8f9fa; border-top: 1px solid #eee; cursor: pointer; color: #007bff; font-size: 13px;"
+                     onclick="loadBackupLogs(true)">
+                    📂 还有 ${remaining} 条历史日志，点击加载更多
+                </div>
+            `;
+        } else if (gAllBackupLogs.length <= LOG_PAGE_SIZE) {
+             html += `<div style="padding:8px;text-align:center;font-size:11px;color:#adb5bd;">已显示全部 ${gAllBackupLogs.length} 条日志</div>`;
+        }
+    
+        logDiv.innerHTML = html;
+    }
+</script>
+<!-- GitHub 备份管理悬浮窗 -->
+<div id="github-backup-overlay" class="changelog-modal-overlay" onclick="closeGithubBackupModal(event)">
+    <div class="changelog-modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+        <div class="changelog-modal-header">
+            <h3 class="changelog-modal-title">☁️ GitHub 备份管理</h3>
+            <button class="changelog-modal-close" onclick="closeGithubBackupModalBtn()">&times;</button>
+        </div>
+        <div class="changelog-modal-body">
+            <!-- 配置区域 -->
+            <div id="gh-config-section" style="margin-bottom: 20px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: #495057; display: block; margin-bottom: 6px;">
+                    GitHub Token (需 repo/public_repo 权限)
+                </label>
+                <input type="password" id="gh-token-input" placeholder="ghp_..." 
+                       style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-family: monospace;">
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="unified-button btn-save-new" onclick="saveGithubConfig()" style="flex:1; font-size: 12px; padding: 6px;">💾 保存配置</button>
+                    <button class="unified-button btn-clear" onclick="clearGithubConfig()" style="flex:1; font-size: 12px; padding: 6px;">🗑️ 清除配置</button>
+                </div>
+                <div id="gh-status-msg" style="font-size: 12px; color: #6c757d; margin-top: 6px;"></div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <button class="unified-button btn-preview" onclick="manualBackup()" style="flex: 1;">🚀 立即备份</button>
+                <button class="unified-button btn-edit" onclick="loadBackupList()" style="flex: 1;">📜 查看记录</button>
+                <button class="unified-button btn-clear" onclick="loadBackupLogs()" style="flex: 1;">📋 日志</button>
+            </div>
+
+            <!-- 新增日志列表容器（默认隐藏） -->
+            <div id="gh-log-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 6px; display: none; font-size: 12px;">
+            </div>
+            <!-- 备份列表 -->
+            <div id="gh-backup-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 6px; display: none;">
+                <!-- 动态生成 -->
+            </div>
+            
+            <!-- 还原确认区 -->
+            <div id="gh-restore-area" style="display: none; margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba;">
+                <div style="font-size: 13px; color: #856404; margin-bottom: 8px;">
+                    ⚠️ 确定要还原到该备份吗？当前数据将被覆盖。
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="unified-button btn-save-new" onclick="confirmRestore()" style="flex: 1; font-size: 12px;">✅ 确认还原</button>
+                    <button class="unified-button btn-cancel" onclick="cancelRestore()" style="flex: 1; font-size: 12px;">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

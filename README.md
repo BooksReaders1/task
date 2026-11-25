@@ -167,6 +167,60 @@ if  {
 
 ## 📝 更新日志
 
+============= 2026-11-23 15:30:00 : **Add GitHub cloud backup system and optimize auto-sync logic** ==========
+
+<center>新增纯前端 GitHub 备份功能，支持按设备/浏览器隔离、AES加密存储及自动/手动备份；新增本地操作日志面板，精准记录同步状态与数据量；优化空数据拦截与首次备份 404 误报问题；增加自动备份成功静默提示及无记录时的友好引导</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 11:30:00 : **Add paste preview card and incremental card rendering** ==========
+
+<center>📋 粘贴后不再直接入库，先弹预览卡展示缩略图、来源徽章、ID 与重复标记，确认后才加入；卡片视图改为增量 diff 渲染，新增/删除/修改单个卡片时仅加载对应缩略图，不再全量重载</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 11:10:00 : **Random work uses unified preview page** ==========
+
+<center>🎲 随机作品按钮改用新重构的统一预览页 PrictureView，与 ✨ 收藏链接按钮共用同一落地页，旧 TestPicture / pictureForP 两套页面不再使用</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 10:50:00 : **Clear inputs when cancel save** ==========
+
+<center>保存时触发重复校验并选择取消保存（含 10 秒自动取消）时，同步清空任务文本与备注输入框</center>
+
+========== ==== commit end =================
+
+============= 2026-11-23 10:30:00 : **Fix XSS vulnerability in escapeHtml** ==========
+
+<center>修复 escapeHtml 未转义引号导致任务文本可闭合属性引号注入脚本的 XSS 风险；改为同时转义 &amp; &lt; &gt; " ' 五个字符</center>
+
+========== ==== commit end =================
+
+============= 2026-11-20 09:46:51 : **Refactor task saving with Promise and duplicate check** ==========
+
+<center>保存任务时校验作品 ID 是否已存在，重复时弹出确认让用户选择是否继续；addTaskToIndexedDB 改为返回 Promise，写入完成后再刷新列表并清空输入，写入失败会提示</center>
+
+========== ==== commit end =================
+
+============= 2026-11-20 09:45:08 : **Refactor ID extraction logic to ignore mentions** ==========
+
+<center>提取作品 ID 时忽略 @昵称: 前缀中的数字（如 @我的123哈哈: 456789 提取 456789），支持半角/全角冒号与多段提及；预览图、本地预览、智能跳转、随机作品等全部同步生效</center>
+
+========== ==== commit end =================
+
+============= 2026-11-20 09:05:00 : **Add card view** ==========
+
+<center>增加卡片页视图，自动加载预览图</center>
+
+========== ==== commit end =================
+
+============= 2026-05-27 15:05:00 : **Disable local preview functionality** ==========
+
+<center>暂时注释掉本地预览相关代码，屏蔽本地预览功能</center>
+
+========== ==== commit end =================
+
 ============= 2026-05-27 13:48:00 : **Add changelog modal functionality** ==========
 
 <center>增加更新日志功能：在左侧菜单添加更新日志入口，点击后弹出悬浮窗显示所有历史更新记录</center>
